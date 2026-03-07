@@ -1,31 +1,26 @@
 import boto3
 from fpdf import FPDF
-import uuid # <-- NUOVA LIBRERIA: Serve a generare il codice univoco della trappola!
+import uuid 
 
 print("Inizio la creazione dell'Honeyfile...")
 
-# ==========================================
-# FASE A: GENERAZIONE DELLA TRAPPOLA (BEACON)
-# ==========================================
-# Creiamo il "numero di telaio" univoco di questa esca
+# generiamo la trappola
 beacon_id = str(uuid.uuid4())
 url_trappola = f"https://api.finta-azienda.com/allarme?id={beacon_id}"
 
-print(f"⚠️ Generato Web Beacon Univoco: {beacon_id}")
-print(f"🔗 URL Trappola nascosto nel file: {url_trappola}")
+print(f"Generato Web Beacon Univoco: {beacon_id}")
+print(f"URL Trappola nascosto nel file: {url_trappola}")
 
-# ==========================================
-# FASE B: CREAZIONE DEL DOCUMENTO PDF
-# ==========================================
+# creiamo il documento pdf
 pdf = FPDF()
 pdf.add_page()
 
-# NASCONDIAMO LA TRAPPOLA NEI METADATI (Invisibile all'occhio umano)
+# nascondiamo la trappola nei metadati 
 pdf.set_title(f"Bilancio_Riservato - TrackingID:{beacon_id}")
 pdf.set_author("Amministrazione")
 pdf.set_subject(url_trappola)
 
-# Testo visibile
+# testo che vediamo (da ampliare e modificare)
 pdf.set_font("helvetica", "B", 16)
 pdf.cell(40, 10, "DOCUMENTO RISERVATO - BILANCIO 2026")
 pdf.ln(20)
@@ -34,11 +29,9 @@ pdf.multi_cell(0, 10, "ATTENZIONE: Questo documento contiene dati finanziari str
 
 nome_file = "bilancio_riservato_2026.pdf"
 pdf.output(nome_file)
-print(f"SI - 1. PDF 'Avvelenato' creato fisicamente sul tuo PC: {nome_file}")
+print(f"PDF 'Avvelenato' creato fisicamente sul tuo PC: {nome_file}")
 
-# ==========================================
-# FASE C: CARICAMENTO NEL CAVEAU CLOUD (S3)
-# ==========================================
+# caricamento in S3
 s3 = boto3.client(
     's3', 
     endpoint_url='http://localhost:4566', 
