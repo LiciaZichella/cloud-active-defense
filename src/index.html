@@ -46,9 +46,9 @@
                 <div class="folder-icon">📁</div>
                 <div class="folder-name">Risorse Umane</div>
             </div>
-            <div class="folder" onclick="openFolder('IT Support')">
+            <div class="folder" onclick="openFolder('Progetti IT')">
                 <div class="folder-icon">📁</div>
-                <div class="folder-name">IT Support</div>
+                <div class="folder-name">Progetti IT</div>
             </div>
             <div class="folder locked" onclick="openFolder('Amministrazione')">
                 <div class="folder-icon">🔒</div>
@@ -77,13 +77,24 @@
 
             let tableHtml = "";
 
-            // cartella normale
-            if (folderName === 'Risorse Umane' || folderName === 'IT Support') {
+            // cartella normale 
+            if (folderName === 'Risorse Umane') {
                 tableHtml = `
                 <table class="legacy-table">
                     <tr><th>Cod. Doc.</th><th>Nome File</th><th>Data</th><th>Azione</th></tr>
                     <tr><td>DOC-101</td><td>Modulo_Ferie.pdf</td><td>01/03/2026</td><td><a onclick="alert('Errore: Permessi insufficienti.')" class="action-link">[Scarica File]</a></td></tr>
                     <tr><td>DOC-102</td><td>Policy_Aziendale.pdf</td><td>15/02/2026</td><td><a onclick="alert('Errore di rete.')" class="action-link">[Scarica File]</a></td></tr>
+                </table>`;
+            }
+            // Progetti IT
+            else if (folderName === 'Progetti IT') {
+                tableHtml = `
+                <div style="background-color: #e6f7ff; border: 1px solid #91d5ff; padding: 10px; margin-bottom: 15px; font-size: 11px;">
+                    <b>NOTA DLP:</b> Documenti monitorati. L'apertura all'esterno della rete aziendale costituisce violazione.
+                </div>
+                <table class="legacy-table">
+                    <tr><th>Cod. Doc.</th><th>Nome File</th><th>Data</th><th>Azione</th></tr>
+                    <tr><td>PRJ-2026</td><td><b>Progetto_Infrastruttura_Rete.pdf</b></td><td>Oggi</td><td><a href="Progetto_Infrastruttura_Rete.pdf" download class="action-link">[Scarica File]</a></td></tr>
                 </table>`;
             }
             //cartella con trappola
@@ -94,7 +105,7 @@
                 </div>
                 <table class="legacy-table">
                     <tr><th>Cod. Doc.</th><th>Nome File</th><th>Data</th><th>Azione</th></tr>
-                    <tr><td>DOC-8834</td><td><b>Bilancio_Riservato_2026.pdf (CONFIDENZIALE)</b></td><td>Oggi</td><td><a href="bilancio_riservato_2026.pdf" download class="action-link">[Scarica File]</a></td></tr>
+                    <tr><td>DOC-8834</td><td><b>Bilancio_Riservato_2026.pdf (CONFIDENZIALE)</b></td><td>Oggi</td><td><a href="bilancio_Riservato_2026.pdf" download class="action-link">[Scarica File]</a></td></tr>
                 </table>`;
             }
 
@@ -102,7 +113,6 @@
         }
 
         function goBack() {
-            // ritorna alle cartelle
             document.getElementById('file-view').style.display = 'none';
             document.getElementById('folder-view').style.display = 'flex';
             document.getElementById('page-title').innerText = "Archivio Documentale Aziendale";
