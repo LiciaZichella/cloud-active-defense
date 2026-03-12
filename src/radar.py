@@ -1,6 +1,40 @@
 import json
-import datetime
 import base64
+import boto3
+import os
+from datetime import datetime
+
+def invia_allarme_sns(file_id, ip_rilevato, scenario):
+    try:
+        # L'indirizzo del nostro Cloud locale dall'interno del container Lambda
+        endpoint = "http://host.docker.internal:4566"
+        sns_client = boto3.client('sns', endpoint_url=endpoint, region_name='us-east-1')
+        
+        # L'ID del megafono
+        topic_arn = "arn:aws:sns:us-east-1:000000000000:Allarme-Intrusione-Radar"
+        
+        # testo della mail
+        messaggio = f"""
+        🚨 ATTENZIONE! RILEVATA POSSIBILE VIOLAZIONE DEI DATI 🚨
+        
+        Dettagli Evento:
+        - Data e Ora: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        - File Coinvolto: {file_id}
+        - Indirizzo IP: {ip_rilevato}
+        - Tipo di Allarme: {scenario}
+        
+        (Questo è un messaggio generato automaticamente dal Modulo Auditing & Detection).
+        """
+        
+        # inviamo la notifica
+        sns_client.publish(
+            TopicArn=topic_arn,
+            Subject=f"ALLARME CRITICO - {scenario}",
+            Message=messaggio
+        )
+        print(f"📣 [AUDIT] Notifica SNS inviata con successo all'Amministratore per {file_id}!")
+    except Exception as e:
+        print(f"⚠️ [ERRORE SNS] Impossibile inviare la notifica: {e}")
 
 # Simuliamo la rete interna dell'azienda (IP autorizzati)
 RETE_INTERNA_AZIENDALE = ["192.168.1.50", "10.0.0.15", "172.16.0.5", "127.0.0.1"]
@@ -10,11 +44,11 @@ def lambda_handler(event, context):
     AWS Lambda - Fase 3: L'Intercettatore e Il Bivio
     Questo codice si sveglia solo quando un PDF viene aperto.
     """
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # BUG RISOLTO: Ora usa correttamente datetime.now()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     headers = event.get('headers', {})
     
     # 1. Chi sta aprendo il file? (Estraiamo l'IP dalla richiesta)
-    # Nota: se l'IP non c'è, mettiamo un IP esterno finto per fare i test
     attacker_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '203.0.113.42')
     
     # 2. Quale file è stato aperto? (Estraiamo il Tracking ID dal Web Beacon)
@@ -28,6 +62,7 @@ def lambda_handler(event, context):
     # REGOLA 1: È un Honeyfile? -> ALLARME IMMEDIATO
     if "HONEY" in file_id.upper():
         print("SCENARIO 1: HONEYFILE VIOLATO! (Insider Threat)")
+        invia_allarme_sns(file_id, attacker_ip, "HONEYFILE VIOLATO (Insider Threat)")
         print("-> Generazione Alert CRITICO per esfiltrazione dati.")
 
     # REGOLA 2: È un File Reale? -> CONTROLLO IP (Interno o Esterno)
@@ -36,12 +71,13 @@ def lambda_handler(event, context):
             print("SCENARIO 2A: File reale aperto dall'ufficio. Tutto regolare.")
         else:
             print("SCENARIO 2B: FILE REALE APERTO FUORI DALL'AZIENDA!")
+            invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
             print(f"-> Allarme WARNING: L'IP {attacker_ip} non appartiene alla rete aziendale.")
             
     else:
         print("File sconosciuto o Web Beacon compromesso.")
 
-   # FINTA PAGINA DI ERRORE 
+    # FINTA PAGINA DI ERRORE 
     URL_HOME_INTRANET = "file:///C:/Users/New/Desktop/cloud-active-defense/src/index.html" # da aggiustare
 
     html_errore = f"""
