@@ -6,6 +6,8 @@ import folium
 from fpdf import FPDF
 import json
 import os
+import boto3
+from datetime import datetime
 
 # CONFIGURAZIONE PAGINA
 st.set_page_config(page_title="Radar Dashboard", layout="wide")
@@ -93,19 +95,62 @@ with st.sidebar:
     st.divider()
     st.caption("Active Defense System v1.0")
 
-# FUNZIONE RECUPERO DATI
+# FUNZIONE RECUPERO DATI (Reale da LocalStack)
 def carica_log_auditing():
-    # Qui simuleremo la lettura dal Bucket S3
-    log_finti = [
-        {"utente": "mario.rossi", "file": "Bilancio_2026.pdf", "ip": "192.168.1.50", "ora": "2026-03-12 15:00", "status": "Download"},
-        {"utente": "luigi.verdi", "file": "Stipendi_HONEY.pdf", "ip": "10.0.0.15", "ora": "2026-03-12 16:30", "status": "Honey-Hit"},
-        {"utente": "Unknown", "file": "Bilancio_2026.pdf", "ip": "203.0.113.42", "ora": "2026-03-12 22:15", "status": "Esfiltrazione"}
-    ]
-    return pd.DataFrame(log_finti)
+    try:
+        #colleghiamo al LocalStack
+        s3 = boto3.client('s3', endpoint_url='http://localhost:4566', region_name='us-east-1')
+        bucket_name = 'portale-sicurezza-logs'
+        
+        #Chiediamo a S3 la lista di tutti i file di log
+        response = s3.list_objects_v2(Bucket=bucket_name)
+        logs = []
+        
+        # leggiamo uno per uno
+        if 'Contents' in response:
+            for item in response['Contents']:
+                file_key = item['Key']
+                
+                #leggiamo solo i file JSON
+                if not file_key.endswith('.json'):
+                    continue
+                    
+                # Scarichiamo e leggiamo
+                obj = s3.get_object(Bucket=bucket_name, Key=file_key)
+                file_content = obj['Body'].read().decode('utf-8')
+                
+                # Trasformiamo il testo JSON in dati Python
+                log_data = json.loads(file_content)
+                
+            # Estraiamo i dati annidati in stile AWS CloudTrail
+                user_identity = log_data.get("userIdentity", {})
+                req_params = log_data.get("requestParameters", {})
+                nome_documento = req_params.get("documento", "Sconosciuto")
+                
+                # Uniformiamo i nomi per la tabella e il grafico
+                riga_tabella = {
+                    "utente": user_identity.get("userName", "Sconosciuto"),
+                    "file": nome_documento,
+                    "ip": log_data.get("sourceIPAddress", "0.0.0.0"),
+                    "ora": log_data.get("eventTime", "N/A"),
+                    "status": "Honey-Hit" if "HONEY" in nome_documento else "Download"
+                }
+                
+                logs.append(riga_tabella)
+                
+        # Se abbiamo trovato dei log, li mettiamo in una tabella Pandas
+        if logs:
+            return pd.DataFrame(logs)
+        else:
+            return pd.DataFrame(columns=["utente", "file", "ip", "ora", "status"])
+            
+    except Exception as e:
+        # Se c'è un errore mostriamo una tabella vuota per non far crashare la dashboard
+        return pd.DataFrame(columns=["utente", "file", "ip", "ora", "status"])
 
 df = carica_log_auditing()
 
-# HEADER DASHBOARD
+#HEADER DASHBOARD
 st.title("Centro Controllo Auditing & Detection")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Integrità Sistema", "100%", "Safe")
@@ -150,18 +195,50 @@ st.dataframe(df, use_container_width=True)
 st.divider()
 st.subheader("Esporta Report Forense")
 
-if st.button("Genera Report PDF dell'Incidente"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, "REPORT FORENSE - MODULO RADAR", ln=True, align='C')
-    pdf.set_font("Arial", '', 12)
-    pdf.ln(10)
-    pdf.cell(200, 10, f"Data Report: 2026-03-13", ln=True)
-    pdf.cell(200, 10, f"Minaccia Rilevata: Violazione Integrità Documento", ln=True)
-    pdf.cell(200, 10, f"Analisi: L'IP 203.0.113.42 ha tentato l'esfiltrazione.", ln=True)
-    
-    pdf_output = pdf.output(dest='S').encode('latin-1')
-    st.download_button(label="Scarica PDF", data=pdf_output, file_name="report_forense.pdf", mime="application/pdf")
+# --- GENERAZIONE REPORT ---
+st.divider()
+st.subheader("Esporta Report Forense")
+
+if st.button("Genera Report PDF dell'ultimo evento"):
+    if not df.empty:
+        # Peschiamo l'ultima riga della tabella (l'evento più recente)
+        ultimo_evento = df.iloc[-1] 
+        
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Intestazione
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, "REPORT FORENSE - NUCLEO RADAR", ln=True, align='C')
+        pdf.ln(10)
+        
+        # Dati dinamici presi dalla tabella
+        pdf.set_font("Arial", '', 12)
+        pdf.cell(200, 10, f"Data Rilevamento: {ultimo_evento['ora']}", ln=True)
+        pdf.cell(200, 10, f"Utente Coinvolto: {ultimo_evento['utente']}", ln=True)
+        pdf.cell(200, 10, f"Indirizzo IP Sorgente: {ultimo_evento['ip']}", ln=True)
+        pdf.cell(200, 10, f"File Coinvolto: {ultimo_evento['file']}", ln=True)
+        pdf.cell(200, 10, f"Livello Minaccia: {ultimo_evento['status']}", ln=True)
+        
+        # Se è un Honeyfile, mettiamo un avviso rosso nel PDF!
+        if ultimo_evento['status'] == 'Honey-Hit':
+            pdf.ln(5)
+            pdf.set_text_color(255, 0, 0) # Colore rosso
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, "ATTENZIONE CRITICA: Violazione di un Honeyfile confermata.", ln=True)
+            pdf.cell(200, 10, "L'utente ha interagito con un'esca tracciata. Avviare protocollo di risposta.", ln=True)
+        
+        # Generazione file
+        pdf_output = pdf.output(dest='S').encode('latin-1')
+        
+        # Scarica il file chiamandolo col nome dell'utente
+        st.download_button(
+            label="Scarica PDF Ufficiale", 
+            data=pdf_output, 
+            file_name=f"report_forense_{ultimo_evento['utente']}.pdf", 
+            mime="application/pdf"
+        )
+    else:
+        st.warning("Nessun dato nel sistema per generare il report.")
 
 st.success("Tutti i dati sono sincronizzati con l'architettura AWS LocalStack.")
