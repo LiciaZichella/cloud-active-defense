@@ -69,8 +69,16 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id):
     c.setFillColor(colors.gray)
     c.drawString(70, 50, f"Classificazione: STRICTLY CONFIDENTIAL | Tracking ID: {beacon_id}")
 
-    # Il Web Beacon Attivo (Link su tutto il foglio)
-    c.linkURL(url_trappola, (0, 0, larghezza, altezza), relative=1)
+    # --- LOGICA DEL CANARY TOKEN ---
+    # Inseriamo il Web Beacon (il link su tutto il foglio) SOLO se è un file REALE.
+    # L'Honeyfile non ne ha bisogno: il suo allarme scatta istantaneamente al momento del download!
+    if "REAL" in prefisso_id:
+        c.linkURL(url_trappola, (0, 0, larghezza, altezza), relative=1)
+        print("[*] Inserito Canary Token (Web Beacon). Allarme attivo per apertura fuori sede.")
+    else:
+        print("[*] Honeyfile generato. Nessun Web Beacon interno (Allarme configurato sul Download).")
+    # ---------------------------------
+
     c.save()
     print(f"PDF creato fisicamente: {nome_file}")
 
@@ -82,7 +90,7 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id):
         print(f"NO - Errore durante il caricamento su S3: {e}")
 
 if __name__ == "__main__":
-    # SCENARIO 1: L'Esca (Honeyfile) 
+    # SCENARIO 1: L'Esca (Honeyfile) - Senza Token
     crea_e_carica_documento(
         nome_file="Bilancio_Riservato_2026.pdf",
         titolo="DOCUMENTO RISERVATO - BILANCIO 2026",
@@ -90,7 +98,7 @@ if __name__ == "__main__":
         prefisso_id="HONEY"
     )
     
-    # SCENARIO 2: Il File Reale (DLP)
+    # SCENARIO 2: Il File Reale (DLP) - Con Token
     crea_e_carica_documento(
         nome_file="Progetto_Infrastruttura_Rete.pdf",
         titolo="PROGETTO TECNICO INFRASTRUTTURA IT",

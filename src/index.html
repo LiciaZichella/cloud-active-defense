@@ -3,32 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <title>Portale Intranet - Archivio</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1400.0.min.js"></script>
+    
     <style>
         body { font-family: Arial, Helvetica, sans-serif; background-color: #e5e5e5; margin: 0; padding: 0; color: #000; font-size: 13px; }
         .top-bar { background-color: #003366; color: white; padding: 10px 20px; font-size: 11px; font-weight: bold; border-bottom: 3px solid #d4af37; }
         .container { width: 800px; margin: 30px auto; background-color: #fff; border: 1px solid #999; padding: 25px; box-shadow: 2px 2px 5px #ccc; min-height: 400px; }
         h1 { color: #003366; font-size: 18px; border-bottom: 2px solid #003366; padding-bottom: 5px; margin-top: 0; }
         .breadcrumbs { font-size: 11px; color: #666; margin-bottom: 15px; }
-
-        /* Stile cartelle */
         .folder-grid { display: flex; gap: 20px; margin-top: 20px; }
         .folder { width: 120px; text-align: center; padding: 15px; border: 1px solid #ccc; background-color: #f9f9f9; cursor: pointer; border-radius: 5px; }
         .folder:hover { background-color: #e0e0e0; border-color: #999; }
         .folder-icon { font-size: 40px; margin-bottom: 10px; }
         .folder-name { font-size: 12px; font-weight: bold; }
-        
-        /* Cartella confidenziale */
         .folder.locked { background-color: #fff0f0; border-color: #ffcccc; }
         .folder.locked:hover { background-color: #ffe0e0; }
-
-        /* Tabella file, stile */
         table.legacy-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         table.legacy-table th { background-color: #003366; color: white; padding: 6px; text-align: left; font-size: 12px; border: 1px solid #000; }
         table.legacy-table td { padding: 6px; border: 1px solid #ccc; font-size: 12px; }
         table.legacy-table tr:nth-child(even) { background-color: #f2f2f2; }
         a.action-link { color: #0000ee; text-decoration: underline; font-weight: bold; cursor: pointer; }
-
-        /* Bottone indietro */
         .btn-back { background-color: #e5e5e5; border: 1px solid #999; padding: 5px 10px; cursor: pointer; font-size: 11px; margin-bottom: 10px; }
         .btn-back:hover { background-color: #ccc; }
     </style>
@@ -58,26 +52,60 @@
 
         <div id="file-view" style="display: none;">
             <button class="btn-back" onclick="goBack()">◄ Torna alle Cartelle</button>
-
-            <div id="table-container">
-                </div>
+            <div id="table-container"></div>
         </div>
-
     </div>
 
     <script>
+        // Configuriamo la connessione al nostro Cloud Locale (LocalStack)
+        AWS.config.update({
+            accessKeyId: 'test',
+            secretAccessKey: 'test',
+            region: 'us-east-1',
+            endpoint: 'http://localhost:4566',
+            s3ForcePathStyle: true
+        });
+        const s3 = new AWS.S3();
+
+        // Il "Motore" che invia l'allarme alla Dashboard
+        function registraDownload(nomeDocumento, utente, ipSimulato) {
+            const dataAttuale = new Date().toISOString();
+            
+            // Creiamo il log in formato CloudTrail
+            const logData = {
+                "eventVersion": "1.08",
+                "userIdentity": { "userName": utente },
+                "eventTime": dataAttuale,
+                "eventName": "GetObject",
+                "sourceIPAddress": ipSimulato,
+                "requestParameters": { "bucketName": "portale-sicurezza-logs", "documento": nomeDocumento }
+            };
+
+            const params = {
+                Bucket: 'portale-sicurezza-logs',
+                Key: `log_${utente}_${Date.now()}.json`,
+                Body: JSON.stringify(logData),
+                ContentType: "application/json"
+            };
+
+            // Spariamo il log nel cassetto S3
+            s3.putObject(params, function(err, data) {
+                if (err) {
+                    console.error("Errore di connessione al Radar:", err);
+                } else {
+                    console.log("Allarme inviato con successo al Nucleo Radar!");
+                }
+            });
+        }
+
         function openFolder(folderName) {
-            //schermata dei file
             document.getElementById('folder-view').style.display = 'none';
             document.getElementById('file-view').style.display = 'block';
-
-            //testi in alto
             document.getElementById('page-title').innerText = "Cartella: " + folderName;
             document.getElementById('path').innerHTML = "Home > Direzione Centrale > Archivio > <b>" + folderName + "</b>";
 
             let tableHtml = "";
 
-            // cartella normale 
             if (folderName === 'Risorse Umane') {
                 tableHtml = `
                 <table class="legacy-table">
@@ -86,7 +114,6 @@
                     <tr><td>DOC-102</td><td>Policy_Aziendale.pdf</td><td>15/02/2026</td><td><a onclick="alert('Errore di rete.')" class="action-link">[Scarica File]</a></td></tr>
                 </table>`;
             }
-            // Progetti IT
             else if (folderName === 'Progetti IT') {
                 tableHtml = `
                 <div style="background-color: #e6f7ff; border: 1px solid #91d5ff; padding: 10px; margin-bottom: 15px; font-size: 11px;">
@@ -94,10 +121,10 @@
                 </div>
                 <table class="legacy-table">
                     <tr><th>Cod. Doc.</th><th>Nome File</th><th>Data</th><th>Azione</th></tr>
-                    <tr><td>PRJ-2026</td><td><b>Progetto_Infrastruttura_Rete.pdf</b></td><td>Oggi</td><td><a href="Progetto_Infrastruttura_Rete.pdf" download class="action-link">[Scarica File]</a></td></tr>
+                    <tr><td>PRJ-2026</td><td><b>Progetto_Infrastruttura_Rete.pdf</b></td><td>Oggi</td>
+                    <td><a href="Progetto_Infrastruttura_Rete.pdf" download class="action-link" onclick="registraDownload('Progetto_Infrastruttura_Rete.pdf', 'mario.rossi', '192.168.1.50'); alert('Download avviato.');">[Scarica File]</a></td></tr>
                 </table>`;
             }
-            //cartella con trappola
             else if (folderName === 'Amministrazione') {
                 tableHtml = `
                 <div style="background-color: #f9f9ca; border: 1px solid #cccc99; padding: 10px; margin-bottom: 15px; font-size: 11px;">
@@ -105,7 +132,9 @@
                 </div>
                 <table class="legacy-table">
                     <tr><th>Cod. Doc.</th><th>Nome File</th><th>Data</th><th>Azione</th></tr>
-                    <tr><td>DOC-8834</td><td><b>Bilancio_Riservato_2026.pdf (CONFIDENZIALE)</b></td><td>Oggi</td><td><a href="bilancio_Riservato_2026.pdf" download class="action-link">[Scarica File]</a></td></tr>
+                    <tr><td>DOC-8834</td><td><b>Bilancio_Riservato_2026.pdf (CONFIDENZIALE)</b></td><td>Oggi</td>
+                    <td><a href="Bilancio_Riservato_2026.pdf" download class="action-link" // Nel blocco Amministrazione, riga 112 circa:
+onclick="registraDownload('Bilancio_Riservato_2026_HONEY.pdf', 'luigi.verdi', '10.0.0.88'); alert('Download avviato. Il file è stato crittografato per la tua sicurezza.');" alert('Download avviato.');">[Scarica File]</a></td></tr>
                 </table>`;
             }
 
@@ -119,6 +148,5 @@
             document.getElementById('path').innerHTML = "Home > Direzione Centrale > <b>Archivio Documentale</b>";
         }
     </script>
-
 </body>
 </html>
