@@ -87,8 +87,8 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
                 self.wfile.write(body.encode())
 
 print("\n [*] 4. Avvio API Gateway sulla porta 8080...")
-print(" IL RADAR E' ARMATO E IN ASCOLTO! (Premi Ctrl+C per spegnerlo)")
-print("TEST LIVE: Apri il PDF 'Bilancio_Riservato_2026.pdf' e clicca in un punto qualsiasi della pagina!")
+print(" IL RADAR E' ARMATO E IN ASCOLTO PER LE ESFILTRAZIONI! (Premi Ctrl+C per spegnerlo)")
+print("TEST LIVE: Apri il PDF 'Progetto_Infrastruttura_Rete.pdf' per simulare l'apertura fuori dalla rete aziendale!")
 
 server = HTTPServer(('localhost', 8080), APIGatewayProxy)
 try:

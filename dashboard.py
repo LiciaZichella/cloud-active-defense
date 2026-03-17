@@ -155,25 +155,38 @@ def carica_log_auditing():
                     user_identity = log_data.get("userIdentity", {})
                     req_params = log_data.get("requestParameters", {})
                     nome_documento = req_params.get("documento", "Sconosciuto")
+                    event_name = log_data.get("eventName", "")
+                    
+                    # L'Honeyfile ha la precedenza assoluta
+                    if "HONEY" in nome_documento:
+                        status = "Honey-Hit"
+                    elif event_name == "Exfiltration":
+                        status = "Esfiltrazione"
+                    else:
+                        status = "Download Regolare"
+                        
+                    geo = log_data.get("geo", {"lat": None, "lon": None})
+
                     logs.append({
                         "utente": user_identity.get("userName", "Sconosciuto"),
                         "file": nome_documento,
                         "ip": log_data.get("sourceIPAddress", "0.0.0.0"),
                         "ora": log_data.get("eventTime", "N/A"),
-                        "status": "Honey-Hit" if "HONEY" in nome_documento else "Download Regolare"
+                        "status": status,
+                        "lat": geo.get("lat"),
+                        "lon": geo.get("lon")
                     })
                 except: pass
-        df = pd.DataFrame(logs) if logs else pd.DataFrame(columns=["utente", "file", "ip", "ora", "status"])
+        df = pd.DataFrame(logs) if logs else pd.DataFrame(columns=["utente", "file", "ip", "ora", "status", "lat", "lon"])
         if not df.empty:
             df = df.sort_values(by="ora", ascending=False).reset_index(drop=True)
         return df
     except Exception:
-        return pd.DataFrame(columns=["utente", "file", "ip", "ora", "status"])
+        return pd.DataFrame(columns=["utente", "file", "ip", "ora", "status", "lat", "lon"])
 
 df = carica_log_auditing()
 
 # GENERATORI PDF
-
 def crea_pdf_forense(dati_incidente, dati_hr):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -268,7 +281,6 @@ with tab_honey:
         ultimo_attacco = df_honey.iloc[0]
         
         # NOTIFICHE PUSH A COMPARSA
-        # Appariranno nell'angolo in basso a destra dello schermo
         st.toast(f"🚨 ALLARME: Rilevata violazione da {ultimo_attacco['utente']}!", icon="🚨")
 
         st.markdown(f"""
@@ -333,25 +345,105 @@ with tab_honey:
 
 #MODULO ESFILTRAZIONE
 with tab_real:
-    st.markdown(f"<h4 style='color: {text_color}; font-weight: 700; margin-top:0;'>Radar Geografico</h4>", unsafe_allow_html=True)
-    m = folium.Map(location=[45.4642, 9.1900], zoom_start=4, tiles="CartoDB dark_matter" if st.session_state.tema_scuro else "CartoDB positron", control_scale=False)
+    st.markdown(f"<h4 style='color: {text_color}; font-weight: 700; margin-top:0;'>Radar Geografico - DLP</h4>", unsafe_allow_html=True)
+    
+    # Filtriamo solo i log di esfiltrazione
+    df_esfiltrazioni = df[df['status'] == 'Esfiltrazione'] if not df.empty else pd.DataFrame()
+    
+    # Creiamo la mappa di base
+    m = folium.Map(location=[45.4642, 9.1900], zoom_start=3)
     folium.Marker([41.90, 12.49], popup="Sede HQ - Roma", icon=folium.Icon(color='blue', icon='home')).add_to(m)
+
+    if not df_esfiltrazioni.empty:
+        ultimo_attacco = df_esfiltrazioni.iloc[0]
+        
+        # Banner Giallo di Esfiltrazione
+        st.markdown(f"""
+        <div style="background-color: #FFF3CD; border: 1px solid #FFEEBA; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px;">
+            <span style="color: #856404; font-weight: bold; font-size: 15px; letter-spacing: 1px;">⚠️ ALLARME ESFILTRAZIONE (DLP):</span>
+            <span style="color: #856404; margin-left: 10px;">Il file <b>{ultimo_attacco['file']}</b> è stato aperto fuori sede (IP: {ultimo_attacco['ip']})</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Aggiungiamo i marker degli attaccanti sulla mappa
+        for index, row in df_esfiltrazioni.iterrows():
+            if pd.notnull(row['lat']) and pd.notnull(row['lon']):
+                folium.Marker(
+                    [row['lat'], row['lon']], 
+                    popup=f"IP: {row['ip']}<br>File: {row['file']}", 
+                    icon=folium.Icon(color='red', icon='warning', prefix='fa')
+                ).add_to(m)
+    else:
+        st.markdown(f"<div style='background-color: {box_hr_bg}; padding: 15px; border-radius: 8px; color: {text_muted}; text-align: center; margin-bottom: 20px;'>Nessuna esfiltrazione rilevata. Documenti al sicuro.</div>", unsafe_allow_html=True)
+        
+    # Mostriamo la mappa
     st_folium(m, use_container_width=True, height=350)
     
-    st.markdown(f"<h4 style='color: {text_color}; font-weight: 700; margin-top:30px;'>Tracciamento Canary Tokens</h4>", unsafe_allow_html=True)
-    df_reali = df[df['status'] != 'Honey-Hit']
-    styled_df_reali = df_reali.style.set_properties(**{ 'background-color': card_color, 'color': text_color, 'border-color': f"{accent_color}33" })
-    st.dataframe(styled_df_reali, use_container_width=True)
+    # Notifica Pop-up (Rossa e aggressiva per l'esfiltrazione)
+    if not df_esfiltrazioni.empty:
+        st.toast("🚨 ALLARME CRITICO: Documento aperto fuori dalla rete!", icon="🚨")
+
+    st.markdown(f"<h4 style='color: {text_color}; font-weight: 700; margin-top:30px;'>Log di Esfiltrazione (Documenti Reali)</h4>", unsafe_allow_html=True)
+    
+    if not df_esfiltrazioni.empty:
+        df_esfiltrazioni_display = df_esfiltrazioni[['file', 'ip', 'ora', 'status']]
+        styled_df_reali = df_esfiltrazioni_display.style.set_properties(**{ 'background-color': card_color, 'color': text_color, 'border-color': f"{accent_color}33" })
+        st.dataframe(styled_df_reali, use_container_width=True)
+        
+        # Generazione Report PDF per l'Incidente
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📄 Genera Report PDF Esfiltrazione", key="pdf_esfiltrazione"):
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
+            
+            # Intestazione Rossa
+            pdf.set_font("Arial", 'B', 16)
+            pdf.set_text_color(220, 53, 69) 
+            pdf.cell(200, 10, txt="REPORT INCIDENTE DLP - ESFILTRAZIONE", ln=True, align='C')
+            pdf.ln(10)
+            
+            # Dati
+            pdf.set_font("Arial", '', 12)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(200, 10, txt=f"Data e Ora Rilevamento: {ultimo_attacco['ora']}", ln=True)
+            pdf.cell(200, 10, txt=f"Documento Compromesso: {ultimo_attacco['file']}", ln=True)
+            
+            # Allarme Fuori Perimetro
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(200, 10, txt=f"Indirizzo IP Tracciato: {ultimo_attacco['ip']}", ln=True)
+            pdf.set_text_color(220, 53, 69)
+            pdf.cell(200, 10, txt="POSIZIONE: FUORI DAL PERIMETRO AZIENDALE AUTORIZZATO", ln=True)
+            
+            # Creazione bottone di download
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
+            st.download_button(
+                label="⬇️ Scarica il PDF Ufficiale",
+                data=pdf_bytes,
+                file_name=f"Report_Esfiltrazione_{ultimo_attacco['ip']}.pdf",
+                mime="application/pdf",
+                type="primary"
+            )
 
 #MODULO REPORT
 with tab_stats:
     if not df.empty:
         col_grafici1, col_grafici2 = st.columns(2)
         with col_grafici1:
-            st.markdown(f"<div style='font-weight:600; color:{text_color}; text-align:center; margin-bottom:10px;'>Tipologia Minacce</div>", unsafe_allow_html=True)
-            fig1 = px.pie(df, names='status', hole=0.5, color_discrete_sequence=[danger_color, success_color])
-            fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color=text_color, margin=dict(t=0, b=0, l=0, r=0))
-            st.plotly_chart(fig1, use_container_width=True)
+            st.markdown(f"<div style='font-weight:600; color:{text_color}; text-align:center; margin-bottom:15px;'>Opzioni Minacce</div>", unsafe_allow_html=True)
+            
+            # Filtriamo i dati
+            df_minacce = df[df['status'] != 'Download Regolare']
+            
+            # Creiamo il grafico 
+            fig1 = px.pie(df_minacce, names='status', hole=0.5, color='status',
+                          color_discrete_map={
+                              'Esfiltrazione': '#dc3545',
+                              'Violazione': '#ffc107'
+                          })
+            fig1.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color=text_color)
+            
+            st.plotly_chart(fig1, width="stretch")
             
         with col_grafici2:
             st.markdown(f"<div style='font-weight:600; color:{text_color}; text-align:center; margin-bottom:10px;'>Reparti a Rischio</div>", unsafe_allow_html=True)

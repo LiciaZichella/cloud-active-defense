@@ -2,6 +2,7 @@ import json
 import base64
 import boto3
 import os
+import time  
 from datetime import datetime
 
 def invia_allarme_sns(file_id, ip_rilevato, scenario):
@@ -36,22 +37,58 @@ def invia_allarme_sns(file_id, ip_rilevato, scenario):
     except Exception as e:
         print(f"⚠️ [ERRORE SNS] Impossibile inviare la notifica: {e}")
 
+
+# SALVATAGGIO LOG SU S3 
+def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp):
+    try:
+        endpoint = "http://host.docker.internal:4566"
+        s3_client = boto3.client('s3', endpoint_url=endpoint, region_name='us-east-1')
+        
+        # Creiamo un file di log JSON identico a quelli della Intranet, 
+        # ma con l'aggiunta delle coordinate geografiche dell'attaccante
+        log_data = {
+            "eventVersion": "1.08",
+            "userIdentity": { "userName": "Sconosciuto (Esterno)" },
+            "eventTime": timestamp,
+            "eventName": "Exfiltration",
+            "sourceIPAddress": ip_rilevato,
+            "requestParameters": { 
+                "bucketName": "portale-sicurezza-logs", 
+                "documento": file_id 
+            },
+            # Simuliamo che l'attaccante abbia aperto il file a Mosca (Russia)
+            "geo": {"lat": 55.7558, "lon": 37.6173} 
+        }
+        
+        # Creiamo un nome univoco per il file di log
+        nome_log = f"esfiltrazione_{int(time.time())}.json"
+        
+        s3_client.put_object(
+            Bucket='portale-sicurezza-logs',
+            Key=nome_log,
+            Body=json.dumps(log_data),
+            ContentType="application/json"
+        )
+        print(f"💾 [S3] Log di Esfiltrazione salvato correttamente per la Dashboard: {nome_log}")
+    except Exception as e:
+        print(f"⚠️ [ERRORE S3] Impossibile salvare il log di esfiltrazione: {e}")
+
+
 # Simuliamo la rete interna dell'azienda (IP autorizzati)
 RETE_INTERNA_AZIENDALE = ["192.168.1.50", "10.0.0.15", "172.16.0.5", "127.0.0.1"]
 
 def lambda_handler(event, context):
     """
-    AWS Lambda - Fase 3: L'Intercettatore e Il Bivio
-    Questo codice si sveglia solo quando un PDF viene aperto.
+    AWS Lambda - Fase 3: L'Intercettatore
+    Questo codice si sveglia solo quando un PDF REALE viene aperto (grazie al Web Beacon).
     """
-    # BUG RISOLTO: Ora usa correttamente datetime.now()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     headers = event.get('headers', {})
     
-    # 1. Chi sta aprendo il file? (Estraiamo l'IP dalla richiesta)
+    # Chi sta aprendo il file? (Estraiamo l'IP dalla richiesta)
     attacker_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', '203.0.113.42')
     
-    # 2. Quale file è stato aperto? (Estraiamo il Tracking ID dal Web Beacon)
+    # Quale file è stato aperto? (Estraiamo il Tracking ID dal Web Beacon)
     query_params = event.get('queryStringParameters') or {}
     file_id = query_params.get('file_id', 'SCONOSCIUTO')
 
@@ -59,26 +96,20 @@ def lambda_handler(event, context):
     print(f"📄 File analizzato: {file_id}")
     print(f"🕵️ IP Rilevato: {attacker_ip}")
     
-    # REGOLA 1: È un Honeyfile? -> ALLARME IMMEDIATO
-    if "HONEY" in file_id.upper():
-        print("SCENARIO 1: HONEYFILE VIOLATO! (Insider Threat)")
-        invia_allarme_sns(file_id, attacker_ip, "HONEYFILE VIOLATO (Insider Threat)")
-        print("-> Generazione Alert CRITICO per esfiltrazione dati.")
-
-    # REGOLA 2: È un File Reale? -> CONTROLLO IP (Interno o Esterno)
-    elif "REAL" in file_id.upper():
-        if attacker_ip in RETE_INTERNA_AZIENDALE:
-            print("SCENARIO 2A: File reale aperto dall'ufficio. Tutto regolare.")
-        else:
-            print("SCENARIO 2B: FILE REALE APERTO FUORI DALL'AZIENDA!")
-            invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
-            print(f"-> Allarme WARNING: L'IP {attacker_ip} non appartiene alla rete aziendale.")
-            
+    # CONTROLLO ESFILTRAZIONE: L'IP è dentro o fuori l'azienda?
+    if attacker_ip in RETE_INTERNA_AZIENDALE:
+        print("SCENARIO A: File reale aperto dall'ufficio. Tutto regolare.")
     else:
-        print("File sconosciuto o Web Beacon compromesso.")
+        print("SCENARIO B: ESFILTRAZIONE! FILE REALE APERTO FUORI DALL'AZIENDA!")
+        # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
+        
+        #Salva il log di esfiltrazione su S3 per farlo leggere alla Dashboard 
+        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp)
+        
+        print(f"-> Allarme WARNING: L'IP {attacker_ip} non appartiene alla rete aziendale.")
 
     # FINTA PAGINA DI ERRORE 
-    URL_HOME_INTRANET = "file:///C:/Users/New/Desktop/cloud-active-defense/src/index.html" # da aggiustare
+    URL_HOME_INTRANET = "file:///C:/Users/New/Desktop/cloud-active-defense/src/index.html"
 
     html_errore = f"""
     <!DOCTYPE html>
