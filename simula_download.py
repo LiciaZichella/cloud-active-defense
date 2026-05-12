@@ -3,6 +3,20 @@ import json
 from datetime import datetime
 import uuid
 from config import CONFIG
+import geoip2.database
+
+
+def _geo_lookup(ip):
+    db_path = CONFIG['geoip']['database_path']
+    try:
+        with geoip2.database.Reader(db_path) as reader:
+            r = reader.city(ip)
+            return r.location.latitude or 0.0, r.location.longitude or 0.0
+    except FileNotFoundError:
+        print(f"[GeoIP] Database non trovato in '{db_path}'. Scaricalo da MaxMind (vedi README).")
+        return 0.0, 0.0
+    except Exception:
+        return 0.0, 0.0
 
 s3 = boto3.client(
     's3',
@@ -44,7 +58,6 @@ def registra_esfiltrazione_esterna(ip_esterno, nome_file, lat, lon):
         "eventName": "Exfiltration",
         "sourceIPAddress": ip_esterno,
         "requestParameters": {"bucketName": BUCKET_LOGS, "documento": nome_file},
-        # TODO Step 1.3: sostituire con lookup GeoIP reale (MaxMind GeoLite2)
         "geo": {"lat": lat, "lon": lon}
     }
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -63,7 +76,8 @@ if __name__ == "__main__":
     registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50", nome_file="Bilancio_Riservato_2026.pdf")
     registra_download(utente="luigi.verdi", ip_aziendale="10.0.0.15", nome_file="Stipendi_Dirigenza_HONEYFILE.pdf")
 
-    # TODO Step 1.3: coordinate calcolate da GeoIP reale
-    registra_esfiltrazione_esterna(ip_esterno="203.0.113.88", nome_file="Progetto_Infrastruttura_Rete.pdf", lat=55.7558, lon=37.6173)
+    ip_ext = "203.0.113.88"
+    lat, lon = _geo_lookup(ip_ext)
+    registra_esfiltrazione_esterna(ip_esterno=ip_ext, nome_file="Progetto_Infrastruttura_Rete.pdf", lat=lat, lon=lon)
 
     print("\n Tutti i log sono stati archiviati in modo immutabile su S3. Apri la Dashboard!")

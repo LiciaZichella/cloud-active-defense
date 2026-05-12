@@ -37,7 +37,7 @@ def invia_allarme_sns(file_id, ip_rilevato, scenario):
         print(f"[ERRORE SNS] Impossibile inviare la notifica: {e}")
 
 
-def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp):
+def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0):
     try:
         s3_client = boto3.client('s3', endpoint_url=LOCALSTACK_ENDPOINT, region_name=APP_REGION)
         log_data = {
@@ -50,8 +50,7 @@ def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp):
                 "bucketName": BUCKET_AUDIT_LOGS,
                 "documento": file_id
             },
-            # TODO Step 1.3: sostituire con lookup GeoIP reale (MaxMind GeoLite2)
-            "geo": {"lat": 55.7558, "lon": 37.6173}
+            "geo": {"lat": lat, "lon": lon}
         }
         nome_log = f"esfiltrazione_{int(time.time())}.json"
         s3_client.put_object(
@@ -81,13 +80,16 @@ def lambda_handler(event, context):
     print(f"File analizzato: {file_id}")
     print(f"IP Rilevato: {attacker_ip}")
 
+    geo_lat = event.get('geoLat', 0.0)
+    geo_lon = event.get('geoLon', 0.0)
+
     if attacker_ip in RETE_INTERNA_AZIENDALE:
         print("SCENARIO A: File reale aperto dall'ufficio. Tutto regolare.")
     else:
         print("SCENARIO B: ESFILTRAZIONE! FILE REALE APERTO FUORI DALL'AZIENDA!")
         # TODO Step 1.5: riabilitare notifiche reali (webhook Discord / SNS)
         # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
-        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp)
+        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon)
         print(f"-> L'IP {attacker_ip} non appartiene alla rete aziendale.")
 
     # Pagina di errore inline — Fix C2: rimosso path fisso Windows
