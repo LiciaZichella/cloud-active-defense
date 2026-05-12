@@ -16,5 +16,4 @@ services:
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./localstack-data}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
-      # creare S3 in automatico
-      - "./init-scripts:/etc/localstack/init/ready.d"
+      - "./infra/init-scripts:/etc/localstack/init/ready.d"
