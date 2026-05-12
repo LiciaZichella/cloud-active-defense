@@ -1,53 +1,164 @@
-# Cloud Active Defense: Honeyfiles & Digital Watermarking
+# Cloud Active Defense — Honeyfiles & Digital Watermarking
 
-## Descrizione del Progetto
-Questo repository contiene l'implementazione di un'architettura Cloud-Native di **Active Defense** sviluppata per contrastare la *Data Exfiltration* e le minacce interne (*Insider Threat*). 
-Il progetto supera i limiti della sicurezza perimetrale tradizionale sfruttando la **Deception Technology** (Honeyfiles) e l'**Active Digital Watermarking** (Web Beacons) per rilevare in tempo reale il furto di documenti aziendali e mappare geograficamente l'identità e la posizione dell'attaccante.
-
-## Stack Tecnologico e Linguaggi Utilizzati
-* **Infrastruttura Cloud:** Docker, LocalStack (Emulatore AWS in locale)
-* **Servizi AWS Simulati:** S3, IAM, Lambda, API Gateway (SNS predisposto)
-* **Linguaggi di Programmazione:** Python 3.9+, Bash, HTML5, JavaScript, CSS3
-* **Librerie Principali (Python):** `boto3` (AWS SDK), `streamlit` (Dashboard), `reportlab` & `fpdf2` (Generazione PDF forensi), `folium` & `plotly` (Mappatura geografica e grafici)
-
-## Architettura dei Moduli
-
-1. **Sicurezza Passiva (Data at Rest):** Creazione dell'infrastruttura via script (*Infrastructure as Code*). I bucket S3 sono protetti con crittografia `SSE-AES256` e `Bucket Versioning` per prevenire alterazioni o ransomware. Gli accessi sono gestiti simulando policy IAM basate sul *Least Privilege*.
-
-2. **Active Defense e Detection (Data in Motion):** Script Python automatizzati che iniettano dinamicamente Web Beacons (Canary Tokens) nei documenti PDF e li caricano nel cloud. Un motore di rilevamento *Serverless* (AWS Lambda) rimane in ascolto:
-   * **Scenario A (Honeyfile):** Se l'esca viene scaricata o aperta, scatta un allarme immediato (*Zero Trust*).
-   * **Scenario B (Data Exfiltration):** Se un documento reale viene aperto fuori dal perimetro IP autorizzato, viene tracciata la violazione geografica.
-
-3. **Auditing Custom & Dashboard:** Poiché AWS CloudTrail nativo non è disponibile gratuitamente su LocalStack, è stato sviluppato un *Custom Audit Logger* che salva file JSON immutabili su S3. Una Dashboard in Streamlit trasforma questi log in "Situational Awareness", mappando gli attacchi geograficamente ed esportando report di conformità forense (NIS 2).
-
-## Prerequisiti: Webhook di notifica (opzionale)
-
-Il sistema invia allarmi in tempo reale su **Discord** o **Slack** quando rileva un'esfiltrazione.
-
-**Discord** (consigliato per i test):
-1. In un server Discord, vai su *Impostazioni canale* -> *Integrazioni* -> *Crea Webhook*
-2. Copia l'URL del webhook
-3. Incollalo in `config.yaml` sotto `alerts.webhook_url`
-
-**Slack**: crea un webhook su app.slack.com e incolla l'URL allo stesso modo.
-
-Se `webhook_url` e' vuoto, le notifiche vengono silenziate senza errori.
+Architettura Cloud-Native di **Active Defense** per contrastare *Data Exfiltration* e *Insider Threat*.  
+Combina **Deception Technology** (Honeyfile) e **Active Digital Watermarking** (Web Beacon) per rilevare in tempo reale il furto di documenti aziendali e mappare geograficamente l'attaccante.
 
 ---
 
-## Prerequisiti: Database GeoIP (MaxMind GeoLite2)
+## Architettura del sistema
 
-Il sistema usa il database **MaxMind GeoLite2-City** per la geolocalizzazione degli IP.
-Il file `.mmdb` è escluso da git (è ~70 MB). Per scaricarlo:
+```mermaid
+flowchart TD
+    A[Portale Dipendenti\nsrc/index.html] -->|Download Honeyfile| B[(S3: company-secure-documents)]
+    A -->|Download File Reale| B
+    B -->|CloudTrail simulato\nsimula_download.py| C[(S3: portale-sicurezza-logs)]
 
-1. Crea un account gratuito su [maxmind.com](https://www.maxmind.com/en/geolite2/signup)
-2. Vai su *Download Files* → **GeoLite2 City** → scarica il file `.tar.gz`
+    D[PDF Reale aperto\nfuori sede] -->|Web Beacon\nGET /radar?file_id=...| E[API Gateway Mock\nstart_radar.py]
+    E -->|Invoca Lambda| F[RadarFunction\nsrc/radar.py]
+    F -->|IP interno| G[Scenario A\nAccesso legittimo]
+    F -->|IP esterno| H[Scenario B\nEsfiltrazione]
+    H --> C
+    H -->|POST webhook| I[Discord / Slack]
+
+    C -->|Legge log JSON| J[Dashboard SOC\ndashboard.py]
+    J --> K[PDF Forense]
+    J --> L[Report NIS2]
+    J --> M[Mappa Folium]
+```
+
+### Scenari di rilevamento
+
+| Scenario | Trigger | Risposta |
+|----------|---------|---------|
+| **A — Honeyfile** | Download del file esca | Log CloudTrail simulato → allarme dashboard |
+| **B — File Reale** | Apertura PDF fuori perimetro IP | Log esfiltrazione S3 + webhook Discord/Slack |
+
+---
+
+## Stack tecnologico
+
+| Layer | Tecnologie |
+|-------|-----------|
+| Infrastruttura | Docker, LocalStack (AWS locale) |
+| Servizi AWS simulati | S3, IAM, Lambda, API Gateway, SNS |
+| Backend | Python 3.9+, boto3 |
+| Generazione documenti | reportlab, geoip2 |
+| Dashboard | Streamlit, Folium, Plotly |
+| Test | pytest |
+
+---
+
+## Prerequisiti
+
+- **Docker Desktop** in esecuzione
+- **Python 3.9+**
+- *(Opzionale)* Database GeoIP MaxMind GeoLite2-City (vedi sotto)
+- *(Opzionale)* Webhook Discord o Slack per notifiche live
+
+### Database GeoIP — MaxMind GeoLite2
+
+Il file `.mmdb` (~70 MB) è escluso da git. Per scaricarlo:
+
+1. Crea un account gratuito su [maxmind.com/en/geolite2/signup](https://www.maxmind.com/en/geolite2/signup)
+2. Vai su *Download Files* → **GeoLite2 City** → scarica il `.tar.gz`
 3. Estrai `GeoLite2-City.mmdb` e copialo in `data/geoip/GeoLite2-City.mmdb`
 
-Senza il database, la geolocalizzazione restituisce coordinate `(0.0, 0.0)` con un avviso a console.
+Senza il database, la geolocalizzazione restituisce `(0.0, 0.0)` con avviso a console.
+
+### Webhook Discord / Slack *(opzionale)*
+
+1. Discord: *Impostazioni canale → Integrazioni → Crea Webhook* → copia URL
+2. Incolla l'URL in `config.yaml` sotto `alerts.webhook_url`
 
 ---
 
-## Stato dello Sviluppo e Next Steps
-Attualmente il sistema è ottimizzato per l'esecuzione locale tramite un approccio **"Mock Data"**, evitando colli di bottiglia hardware. Le notifiche email via Amazon SNS sono implementate nel codice ma bypassate in favore di chiamate Webhook più leggere.
-* **Prossimo sviluppo:** Integrazione API-First (Webhook) con la piattaforma di Posture Management **LicIA / SecurityVitals** per innescare azioni di *Auto-Remediation* (blocco utente istantaneo).
+## Setup e avvio rapido
+
+### Windows (PowerShell)
+
+```powershell
+pip install -r requirements.txt
+.\setup.ps1
+streamlit run dashboard.py
+```
+
+### Linux / macOS
+
+```bash
+pip install -r requirements.txt
+chmod +x setup.sh && ./setup.sh
+streamlit run dashboard.py
+```
+
+### Comandi manuali (step-by-step)
+
+```bash
+# 1. Avvia LocalStack
+docker-compose up -d
+
+# 2. Attendi che LocalStack sia pronto (endpoint health: http://localhost:4566/_localstack/health)
+
+# 3. Crea bucket S3 e configura auditing
+python setup_auditing.py
+
+# 4. Crea topic SNS
+python setup_sns.py
+
+# 5. Genera Honeyfile e File Reale, carica su S3
+python src/generator.py
+
+# 6. Avvia il Radar (API Gateway + Lambda)
+python start_radar.py
+```
+
+Apri `src/index.html` nel browser per accedere al portale esca.  
+Apri `streamlit run dashboard.py` per la dashboard SOC.
+
+---
+
+## Struttura del progetto
+
+```
+cloud-active-defense/
+├── config.yaml               # Configurazione centralizzata
+├── config.py                 # Loader config.yaml
+├── dashboard.py              # Entry point Streamlit
+├── dashboard/
+│   ├── tabs/                 # Tab HONEYFILE / ESFILTRAZIONE / REPORT
+│   └── utils/                # Caricamento dati S3, generazione PDF
+├── src/
+│   ├── generator.py          # Genera PDF Honeyfile e File Reale
+│   ├── radar.py              # Lambda: detection beacon + webhook
+│   ├── index.html            # Portale dipendenti (esca)
+│   └── requirements.txt
+├── start_radar.py            # Mock API Gateway + deploy Lambda
+├── setup_auditing.py         # Crea bucket S3 e policy
+├── setup_sns.py              # Crea topic SNS
+├── simula_download.py        # Simula download e traffico esterno
+├── infra/
+│   └── init-scripts/         # Script IAM eseguiti da LocalStack all'avvio
+├── data/
+│   ├── geoip/                # GeoLite2-City.mmdb (non in git)
+│   ├── hr_data.json          # Database HR dipendenti
+│   └── policies/             # JSON policy IAM
+└── tests/                    # Unit test pytest
+```
+
+---
+
+## Eseguire i test
+
+```bash
+python -m pytest tests/ -v
+```
+
+---
+
+## Limiti della simulazione (LocalStack Community)
+
+| Funzionalità | Stato |
+|-------------|-------|
+| CloudTrail nativo | Non disponibile → sostituito con logger custom JSON su S3 |
+| SNS invio email reale | Non disponibile → sostituito con webhook HTTP |
+| IAM enforcement completo | Parziale → ruoli e policy creati ma non applicati da LocalStack Community |
+| Latenze e costi reali AWS | Non simulati |
