@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FullAccessDocuments",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::company-secure-documents",
+        "arn:aws:s3:::company-secure-documents/*"
+      ]
+    },
+    {
+      "Sid": "FullAccessAuditLogs",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::portale-sicurezza-logs",
+        "arn:aws:s3:::portale-sicurezza-logs/*"
+      ]
+    }
+  ]
+}
