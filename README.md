@@ -20,6 +20,21 @@ Il progetto supera i limiti della sicurezza perimetrale tradizionale sfruttando 
 
 3. **Auditing Custom & Dashboard:** Poiché AWS CloudTrail nativo non è disponibile gratuitamente su LocalStack, è stato sviluppato un *Custom Audit Logger* che salva file JSON immutabili su S3. Una Dashboard in Streamlit trasforma questi log in "Situational Awareness", mappando gli attacchi geograficamente ed esportando report di conformità forense (NIS 2).
 
+## Prerequisiti: Webhook di notifica (opzionale)
+
+Il sistema invia allarmi in tempo reale su **Discord** o **Slack** quando rileva un'esfiltrazione.
+
+**Discord** (consigliato per i test):
+1. In un server Discord, vai su *Impostazioni canale* -> *Integrazioni* -> *Crea Webhook*
+2. Copia l'URL del webhook
+3. Incollalo in `config.yaml` sotto `alerts.webhook_url`
+
+**Slack**: crea un webhook su app.slack.com e incolla l'URL allo stesso modo.
+
+Se `webhook_url` e' vuoto, le notifiche vengono silenziate senza errori.
+
+---
+
 ## Prerequisiti: Database GeoIP (MaxMind GeoLite2)
 
 Il sistema usa il database **MaxMind GeoLite2-City** per la geolocalizzazione degli IP.

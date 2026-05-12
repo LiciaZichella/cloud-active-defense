@@ -3,6 +3,7 @@ import base64
 import boto3
 import os
 import time
+import urllib.request
 from datetime import datetime
 
 # Configurazione da variabili d'ambiente iniettate da start_radar.py
@@ -11,6 +12,41 @@ BUCKET_AUDIT_LOGS = os.environ.get('BUCKET_AUDIT_LOGS', 'portale-sicurezza-logs'
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:000000000000:Allarme-Intrusione-Radar')
 APP_REGION = os.environ.get('APP_REGION', 'us-east-1')
 RETE_INTERNA_AZIENDALE = os.environ.get('INTERNAL_IPS', '192.168.1.50,10.0.0.15,172.16.0.5,127.0.0.1').split(',')
+WEBHOOK_URL = os.environ.get('WEBHOOK_URL', '')
+
+
+def invia_webhook(file_id, ip_rilevato, scenario):
+    if not WEBHOOK_URL:
+        return
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if 'discord' in WEBHOOK_URL:
+        payload = {
+            "embeds": [{
+                "title": f"ALLARME CRITICO: {scenario}",
+                "color": 16711680,
+                "fields": [
+                    {"name": "File", "value": file_id, "inline": True},
+                    {"name": "IP sorgente", "value": ip_rilevato, "inline": True},
+                    {"name": "Timestamp", "value": timestamp, "inline": False}
+                ],
+                "footer": {"text": "Cloud Active Defense — Modulo Radar"}
+            }]
+        }
+    else:
+        payload = {
+            "text": f"*ALLARME CRITICO: {scenario}*\nFile: `{file_id}`\nIP: `{ip_rilevato}`\nTimestamp: {timestamp}"
+        }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        WEBHOOK_URL, data=data,
+        headers={'Content-Type': 'application/json'},
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            print(f"[WEBHOOK] Notifica inviata (HTTP {resp.status})")
+    except Exception as e:
+        print(f"[ERRORE WEBHOOK] {e}")
 
 
 def invia_allarme_sns(file_id, ip_rilevato, scenario):
@@ -87,9 +123,9 @@ def lambda_handler(event, context):
         print("SCENARIO A: File reale aperto dall'ufficio. Tutto regolare.")
     else:
         print("SCENARIO B: ESFILTRAZIONE! FILE REALE APERTO FUORI DALL'AZIENDA!")
-        # TODO Step 1.5: riabilitare notifiche reali (webhook Discord / SNS)
-        # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
         registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon)
+        invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale")
+        # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
         print(f"-> L'IP {attacker_ip} non appartiene alla rete aziendale.")
 
     # Pagina di errore inline — Fix C2: rimosso path fisso Windows
