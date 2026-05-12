@@ -1,0 +1,14 @@
+{
+  "luigi.verdi": {
+    "reparto": "Amministrazione",
+    "ruolo": "Contabile Senior",
+    "rischio": "ALTO (Livello 3)",
+    "sede": "Sede Centrale - Piano 2"
+  },
+  "mario.rossi": {
+    "reparto": "IT & Sistemi",
+    "ruolo": "Amministratore di Rete",
+    "rischio": "MEDIO (Livello 2)",
+    "sede": "Data Center - Milano"
+  }
+}
