@@ -1,0 +1,37 @@
+localstack:
+  endpoint: "http://localhost:4566"                        # script che girano sull'host
+  endpoint_lambda: "http://host.docker.internal:4566"     # radar.py dentro il container Lambda
+  region: "us-east-1"
+  access_key: "test"
+  secret_key: "test"
+
+buckets:
+  documents: "company-secure-documents"
+  audit_logs: "portale-sicurezza-logs"
+
+radar:
+  url: "http://localhost:8080"
+  port: 8080
+
+network:
+  internal_ips:
+    - "192.168.1.50"
+    - "10.0.0.15"
+    - "172.16.0.5"
+    - "127.0.0.1"
+
+sns:
+  topic_name: "Allarme-Intrusione-Radar"
+  topic_arn: "arn:aws:sns:us-east-1:000000000000:Allarme-Intrusione-Radar"
+  admin_email: "security.admin@azienda.local"
+
+alerts:
+  webhook_url: ""   # Step 1.5: inserire URL webhook Discord/Slack per notifiche reali
+
+company:
+  name: "Istituto di Credito Nazionale"
+  hq_lat: 41.9028   # Roma — sede HQ (Step 1.3: usato come punto di riferimento sulla mappa)
+  hq_lon: 12.4964
+
+geoip:
+  database_path: "data/geoip/GeoLite2-City.mmdb"   # Step 1.3: scaricare da MaxMind
