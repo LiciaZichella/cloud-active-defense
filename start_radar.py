@@ -22,7 +22,8 @@ lambda_env = {
     'BUCKET_AUDIT_LOGS':   CONFIG['buckets']['audit_logs'],
     'SNS_TOPIC_ARN':       CONFIG['sns']['topic_arn'],
     'APP_REGION':          region,
-    'INTERNAL_IPS':        ','.join(CONFIG['network']['internal_ips'])
+    'INTERNAL_IPS':        ','.join(CONFIG['network']['internal_ips']),
+    'WEBHOOK_URL':         CONFIG['alerts']['webhook_url']
 }
 
 print("\n[*] 1. Impacchettamento funzione Lambda (radar.zip)...")
@@ -109,10 +110,6 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
                 self.wfile.write(body.encode())
 
 
-print(f"\n[*] 4. Avvio API Gateway sulla porta {radar_port}...")
-print(" IL RADAR E' ARMATO E IN ASCOLTO PER LE ESFILTRAZIONI! (Premi Ctrl+C per spegnerlo)")
-print("TEST LIVE: Apri il PDF 'Progetto_Infrastruttura_Rete.pdf' per simulare l'apertura fuori dalla rete aziendale!")
-
 def _geo_lookup(ip):
     db_path = CONFIG['geoip']['database_path']
     try:
@@ -125,6 +122,10 @@ def _geo_lookup(ip):
     except Exception:
         return 0.0, 0.0
 
+
+print(f"\n[*] 4. Avvio API Gateway sulla porta {radar_port}...")
+print(" IL RADAR E' ARMATO E IN ASCOLTO PER LE ESFILTRAZIONI! (Premi Ctrl+C per spegnerlo)")
+print("TEST LIVE: Apri il PDF 'Progetto_Infrastruttura_Rete.pdf' per simulare l'apertura fuori dalla rete aziendale!")
 
 server = HTTPServer(('localhost', radar_port), APIGatewayProxy)
 try:
