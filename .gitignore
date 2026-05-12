@@ -1,3 +1,4 @@
 localstack-data/
 *.pdf
 .claude/
+data/geoip/*.mmdb

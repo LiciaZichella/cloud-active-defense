@@ -20,6 +20,19 @@ Il progetto supera i limiti della sicurezza perimetrale tradizionale sfruttando 
 
 3. **Auditing Custom & Dashboard:** Poiché AWS CloudTrail nativo non è disponibile gratuitamente su LocalStack, è stato sviluppato un *Custom Audit Logger* che salva file JSON immutabili su S3. Una Dashboard in Streamlit trasforma questi log in "Situational Awareness", mappando gli attacchi geograficamente ed esportando report di conformità forense (NIS 2).
 
+## Prerequisiti: Database GeoIP (MaxMind GeoLite2)
+
+Il sistema usa il database **MaxMind GeoLite2-City** per la geolocalizzazione degli IP.
+Il file `.mmdb` è escluso da git (è ~70 MB). Per scaricarlo:
+
+1. Crea un account gratuito su [maxmind.com](https://www.maxmind.com/en/geolite2/signup)
+2. Vai su *Download Files* → **GeoLite2 City** → scarica il file `.tar.gz`
+3. Estrai `GeoLite2-City.mmdb` e copialo in `data/geoip/GeoLite2-City.mmdb`
+
+Senza il database, la geolocalizzazione restituisce coordinate `(0.0, 0.0)` con un avviso a console.
+
+---
+
 ## Stato dello Sviluppo e Next Steps
 Attualmente il sistema è ottimizzato per l'esecuzione locale tramite un approccio **"Mock Data"**, evitando colli di bottiglia hardware. Le notifiche email via Amazon SNS sono implementate nel codice ma bypassate in favore di chiamate Webhook più leggere.
 * **Prossimo sviluppo:** Integrazione API-First (Webhook) con la piattaforma di Posture Management **LicIA / SecurityVitals** per innescare azioni di *Auto-Remediation* (blocco utente istantaneo).

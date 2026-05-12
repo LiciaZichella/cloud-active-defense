@@ -6,6 +6,7 @@ import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from config import CONFIG
+import geoip2.database
 
 print("FASE 3: INIZIALIZZAZIONE SISTEMA DI DIFESA ATTIVA")
 
@@ -71,13 +72,16 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
 
             # Fix C3: IP reale del client invece del valore hardcoded precedente
             client_ip = self.client_address[0]
+            geo_lat, geo_lon = _geo_lookup(client_ip)
 
             event = {
                 "queryStringParameters": query_params,
                 "headers": dict(self.headers),
                 "requestContext": {
                     "identity": {"sourceIp": client_ip}
-                }
+                },
+                "geoLat": geo_lat,
+                "geoLon": geo_lon
             }
 
             response = lambda_client.invoke(
@@ -108,6 +112,19 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
 print(f"\n[*] 4. Avvio API Gateway sulla porta {radar_port}...")
 print(" IL RADAR E' ARMATO E IN ASCOLTO PER LE ESFILTRAZIONI! (Premi Ctrl+C per spegnerlo)")
 print("TEST LIVE: Apri il PDF 'Progetto_Infrastruttura_Rete.pdf' per simulare l'apertura fuori dalla rete aziendale!")
+
+def _geo_lookup(ip):
+    db_path = CONFIG['geoip']['database_path']
+    try:
+        with geoip2.database.Reader(db_path) as reader:
+            r = reader.city(ip)
+            return r.location.latitude or 0.0, r.location.longitude or 0.0
+    except FileNotFoundError:
+        print(f"[GeoIP] Database non trovato in '{db_path}'. Scaricalo da MaxMind (vedi README).")
+        return 0.0, 0.0
+    except Exception:
+        return 0.0, 0.0
+
 
 server = HTTPServer(('localhost', radar_port), APIGatewayProxy)
 try:
