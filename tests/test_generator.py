@@ -42,7 +42,7 @@ def test_beacon_id_univoco():
     assert id1 != id2
 
 
-def test_autore_amministrazione():
+def test_autore_default_amministrazione():
     c = _esegui('test.pdf', 'HONEY')
     c.setAuthor.assert_called_once_with('Amministrazione')
 
@@ -70,3 +70,25 @@ def test_tracking_id_nel_footer():
     c = _esegui('doc.pdf', 'HONEY')
     testi = [str(call) for call in c.drawString.call_args_list]
     assert any('Tracking ID' in t for t in testi)
+
+
+def test_lotto_genera_n_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with patch('generator.canvas.Canvas', return_value=MagicMock()), \
+             patch('os.path.dirname', return_value=tmpdir), \
+             patch.object(generator.s3, 'upload_file') as mock_upload:
+            generator.genera_lotto(2, 1)
+    assert mock_upload.call_count == 3
+
+
+def test_nomi_lotto_univoci():
+    nomi = []
+
+    def cattura(nome_file, *args, **kwargs):
+        nomi.append(nome_file)
+
+    with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura):
+        generator.genera_lotto(2, 1)
+
+    assert len(nomi) == 3
+    assert len(nomi) == len(set(nomi))

@@ -10,5 +10,29 @@
     "ruolo": "Amministratore di Rete",
     "rischio": "MEDIO (Livello 2)",
     "sede": "Data Center - Milano"
+  },
+  "anna.bianchi": {
+    "reparto": "Marketing",
+    "ruolo": "Specialista Comunicazione",
+    "rischio": "BASSO (Livello 1)",
+    "sede": "Sede Centrale - Piano 1"
+  },
+  "giulia.ferrari": {
+    "reparto": "Risorse Umane",
+    "ruolo": "HR Manager",
+    "rischio": "MEDIO (Livello 2)",
+    "sede": "Sede Centrale - Piano 3"
+  },
+  "paolo.conti": {
+    "reparto": "Direzione",
+    "ruolo": "Direttore Generale",
+    "rischio": "ALTO (Livello 3)",
+    "sede": "Sede Centrale - Piano 4"
+  },
+  "sara.romano": {
+    "reparto": "IT & Sistemi",
+    "ruolo": "Sviluppatrice Senior",
+    "rischio": "MEDIO (Livello 2)",
+    "sede": "Data Center - Milano"
   }
 }
