@@ -5,6 +5,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import boto3
 import uuid
 import os
+import json
+import random
+import camouflage
+from faker import Faker
 from config import CONFIG
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -23,28 +27,29 @@ s3 = boto3.client(
     region_name=CONFIG['localstack']['region']
 )
 
+_HR_DATA_PATH = Path(__file__).parent.parent / 'data' / 'hr_data.json'
+
 try:
     s3.create_bucket(Bucket=NOME_BUCKET)
     print(f"[*] Caveau S3 '{NOME_BUCKET}' creato e pronto!")
 except Exception as e:
     pass
 
-def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id):
+
+def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=None, categoria=None):
     beacon_id = f"{prefisso_id}_{uuid.uuid4().hex[:8]}"
     url_trappola = f"{RADAR_URL}?file_id={beacon_id}"
 
     print(f"\nGenerazione: {nome_file}")
 
-    # percorso relativo alla directory src/ dove risiede generator.py
     percorso_completo = os.path.join(os.path.dirname(__file__), nome_file)
     c = canvas.Canvas(percorso_completo, pagesize=A4)
     larghezza, altezza = A4
 
     c.setTitle(f"{titolo} - TrackingID:{beacon_id}")
-    c.setAuthor("Amministrazione")
+    c.setAuthor(autore if autore else "Amministrazione")
     c.setSubject(url_trappola)
 
-    # Filigrana visiva diagonale
     c.saveState()
     c.translate(larghezza / 2, altezza / 2)
     c.rotate(45)
@@ -85,19 +90,39 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id):
     except Exception as e:
         print(f"NO - Errore durante il caricamento su S3: {e}")
 
-if __name__ == "__main__":
-    crea_e_carica_documento(
-        nome_file="Bilancio_Riservato_2026.pdf",
-        titolo="DOCUMENTO RISERVATO - BILANCIO 2026",
-        contenuto="ATTENZIONE: Questo documento contiene dati finanziari strettamente confidenziali.\nLa divulgazione non autorizzata è severamente punita dalle policy aziendali.\n\nFatturato Q1: 4.5M Euro\nAcquisizioni previste: Progetto Alpha.",
-        prefisso_id="HONEY"
-    )
 
-    crea_e_carica_documento(
-        nome_file="Progetto_Infrastruttura_Rete.pdf",
-        titolo="PROGETTO TECNICO INFRASTRUTTURA IT",
-        contenuto="Dettagli di configurazione dei server interni.\nConsultabile SOLO in sede aziendale.",
-        prefisso_id="REAL"
-    )
+def genera_lotto(n_honey, n_real):
+    fake = Faker('it_IT')
+
+    with open(_HR_DATA_PATH) as f:
+        hr_data = json.load(f)
+
+    nomi_usati = set()
+
+    for _ in range(n_honey):
+        cat = random.choice(camouflage.CATEGORIE)
+        nome = camouflage.genera_nome_documento(cat)
+        while nome in nomi_usati:
+            nome = camouflage.genera_nome_documento(cat)
+        nomi_usati.add(nome)
+        contenuto = camouflage.genera_contenuto_documento(cat, fake)
+        autore = camouflage.seleziona_autore(hr_data)
+        crea_e_carica_documento(nome, nome.replace('.pdf', '').replace('_', ' '),
+                                contenuto, 'HONEY', autore=autore, categoria=cat)
+
+    for _ in range(n_real):
+        cat = random.choice(camouflage.CATEGORIE)
+        nome = camouflage.genera_nome_documento(cat)
+        while nome in nomi_usati:
+            nome = camouflage.genera_nome_documento(cat)
+        nomi_usati.add(nome)
+        contenuto = camouflage.genera_contenuto_documento(cat, fake)
+        autore = camouflage.seleziona_autore(hr_data)
+        crea_e_carica_documento(nome, nome.replace('.pdf', '').replace('_', ' '),
+                                contenuto, 'REAL', autore=autore, categoria=cat)
+
+
+if __name__ == "__main__":
+    genera_lotto(n_honey=3, n_real=2)
 
     print("\nOperazione completata.")
