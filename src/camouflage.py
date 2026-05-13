@@ -3,18 +3,28 @@ from faker import Faker
 
 CATEGORIE = ['contratto', 'bilancio', 'progetto', 'risorse_umane', 'comunicazione']
 
+FORMATO_PER_CATEGORIA = {
+    'contratto':     'docx',
+    'bilancio':      'xlsx',
+    'progetto':      'pdf',
+    'risorse_umane': 'docx',
+    'comunicazione': 'pdf',
+}
+
 _AZIENDE = ['Acme', 'Nexus', 'Sigma', 'Orion', 'Titan', 'Vega', 'Atlas', 'Apex']
 _PROGETTI = ['Atlas', 'Sigma', 'Nexus', 'Orion', 'Titan', 'Vega', 'Pyro', 'Helios']
 
 
-def genera_nome_documento(categoria):
+def genera_nome_documento(categoria, formato=None):
+    if formato is None:
+        formato = FORMATO_PER_CATEGORIA[categoria]
     trimestre = random.choice(['Q1', 'Q2', 'Q3', 'Q4'])
     nomi = {
-        'contratto':    f"Contratto_Fornitura_{random.choice(_AZIENDE)}_2026.pdf",
-        'bilancio':     f"Bilancio_{trimestre}_2026.pdf",
-        'progetto':     f"Progetto_{random.choice(_PROGETTI)}_Specifiche.pdf",
-        'risorse_umane': f"Valutazione_Personale_{trimestre}.pdf",
-        'comunicazione': f"Report_Comunicazione_{trimestre}_2026.pdf",
+        'contratto':     f"Contratto_Fornitura_{random.choice(_AZIENDE)}_2026.{formato}",
+        'bilancio':      f"Bilancio_{trimestre}_2026.{formato}",
+        'progetto':      f"Progetto_{random.choice(_PROGETTI)}_Specifiche.{formato}",
+        'risorse_umane': f"Valutazione_Personale_{trimestre}.{formato}",
+        'comunicazione': f"Report_Comunicazione_{trimestre}_2026.{formato}",
     }
     return nomi[categoria]
 
