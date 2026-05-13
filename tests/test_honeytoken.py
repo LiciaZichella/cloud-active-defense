@@ -12,7 +12,7 @@ _mock_config.CONFIG = {
         'secret_key': 'test',
         'region': 'us-east-1',
     },
-    'buckets': {'documents': 'test-docs'},
+    'buckets': {'documents': 'test-docs', 'audit_logs': 'test-logs'},
     'radar': {'url': 'http://localhost:8080'},
 }
 sys.modules['config'] = _mock_config

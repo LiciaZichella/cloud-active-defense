@@ -30,6 +30,8 @@ tor_path = os.path.join('data', 'tor_exit_nodes.txt')
 vpn_path = os.path.join('data', 'vpn_cidr_ranges.txt')
 lambda_env['TOR_NODES'] = open(tor_path, encoding='utf-8').read() if os.path.exists(tor_path) else ''
 lambda_env['VPN_RANGES'] = open(vpn_path, encoding='utf-8').read() if os.path.exists(vpn_path) else ''
+lambda_env['REMEDIATION_ENABLED'] = str(CONFIG['remediation']['enabled']).lower()
+lambda_env['REMEDIATION_ROLE'] = CONFIG['remediation']['role_to_revoke']
 
 print("\n[*] 1. Impacchettamento funzione Lambda (radar.zip)...")
 with zipfile.ZipFile("radar.zip", "w") as z:
