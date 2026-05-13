@@ -102,7 +102,8 @@ def test_lotto_misto_formati():
     with patch('generator.random.choice', side_effect=_forced_choice), \
          patch.object(generator, 'crea_e_carica_documento', side_effect=cattura), \
          patch.object(multi_format, 'crea_documento_docx', side_effect=cattura), \
-         patch.object(multi_format, 'crea_documento_xlsx', side_effect=cattura):
+         patch.object(multi_format, 'crea_documento_xlsx', side_effect=cattura), \
+         patch.object(generator, 'crea_e_carica_honeytoken'):
         generator.genera_lotto(3, 3)
 
     assert len(nomi) == 6

@@ -6,3 +6,7 @@ localstack-data/
 data/geoip/*.mmdb
 __pycache__/
 *.pyc
+src/aws_credentials.txt
+src/.env.production
+src/devops_secrets.yaml
+src/id_rsa_backup

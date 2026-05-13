@@ -80,7 +80,8 @@ def test_lotto_genera_n_file():
 
     with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura), \
          patch.object(generator.multi_format, 'crea_documento_docx', side_effect=cattura), \
-         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura):
+         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura), \
+         patch.object(generator, 'crea_e_carica_honeytoken'):
         generator.genera_lotto(2, 1)
 
     assert len(nomi) == 3
@@ -140,7 +141,8 @@ def test_nomi_lotto_univoci():
 
     with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura), \
          patch.object(generator.multi_format, 'crea_documento_docx', side_effect=cattura), \
-         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura):
+         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura), \
+         patch.object(generator, 'crea_e_carica_honeytoken'):
         generator.genera_lotto(2, 1)
 
     assert len(nomi) == 3
