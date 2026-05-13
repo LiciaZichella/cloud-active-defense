@@ -9,6 +9,7 @@ import json
 import random
 import camouflage
 import multi_format
+import honeytoken
 from faker import Faker
 from config import CONFIG
 from reportlab.pdfgen import canvas
@@ -20,6 +21,13 @@ print("Inizio la creazione dei documenti di sicurezza...")
 
 RADAR_URL = CONFIG['radar']['url'] + "/radar"
 NOME_BUCKET = CONFIG['buckets']['documents']
+
+NOMI_HONEYTOKEN = {
+    'aws':    'aws_credentials.txt',
+    'env':    '.env.production',
+    'config': 'devops_secrets.yaml',
+    'ssh':    'id_rsa_backup',
+}
 
 s3 = boto3.client(
     's3',
@@ -106,7 +114,28 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=No
         print(f"NO - Errore durante il caricamento su S3: {e}")
 
 
-def genera_lotto(n_honey, n_real):
+def crea_e_carica_honeytoken(tipo):
+    beacon_id = f"TOKEN_{uuid.uuid4().hex[:8]}"
+    nome_file = NOMI_HONEYTOKEN[tipo]
+    generatori = {
+        'aws':    honeytoken.genera_aws_credentials,
+        'env':    honeytoken.genera_env_file,
+        'config': honeytoken.genera_config_devops,
+        'ssh':    honeytoken.genera_ssh_key,
+    }
+    contenuto = generatori[tipo](beacon_id)
+    percorso = os.path.join(os.path.dirname(__file__), nome_file)
+    with open(percorso, 'w', encoding='utf-8') as f:
+        f.write(contenuto)
+    print(f"[*] Honeytoken {tipo.upper()} generato: {nome_file}")
+    try:
+        s3.upload_file(percorso, NOME_BUCKET, nome_file)
+        print(f"SI - Honeytoken caricato: {nome_file}")
+    except Exception as e:
+        print(f"NO - Errore upload honeytoken: {e}")
+
+
+def genera_lotto(n_honey, n_real, n_tokens=2):
     fake = Faker('it_IT')
 
     with open(_HR_DATA_PATH) as f:
@@ -136,8 +165,13 @@ def genera_lotto(n_honey, n_real):
                 multi_format.crea_documento_xlsx(nome, titolo, contenuto,
                                                  beacon_url, prefisso, autore)
 
+    tipi_disponibili = list(NOMI_HONEYTOKEN.keys())
+    tipi_scelti = random.sample(tipi_disponibili, min(n_tokens, len(tipi_disponibili)))
+    for tipo in tipi_scelti:
+        crea_e_carica_honeytoken(tipo)
+
 
 if __name__ == "__main__":
-    genera_lotto(n_honey=3, n_real=2)
+    genera_lotto(n_honey=3, n_real=2, n_tokens=2)
 
     print("\nOperazione completata.")
