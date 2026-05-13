@@ -5,6 +5,7 @@ import os
 import time
 import urllib.request
 from datetime import datetime
+import threat_intel
 
 # Configurazione da variabili d'ambiente iniettate da start_radar.py
 LOCALSTACK_ENDPOINT = os.environ.get('LOCALSTACK_ENDPOINT', 'http://host.docker.internal:4566')
@@ -13,9 +14,11 @@ SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', 'arn:aws:sns:us-east-1:000000000
 APP_REGION = os.environ.get('APP_REGION', 'us-east-1')
 RETE_INTERNA_AZIENDALE = os.environ.get('INTERNAL_IPS', '192.168.1.50,10.0.0.15,172.16.0.5,127.0.0.1').split(',')
 WEBHOOK_URL = os.environ.get('WEBHOOK_URL', '')
+TOR_SET = threat_intel.parse_tor_nodes(os.environ.get('TOR_NODES', ''))
+VPN_RANGES = threat_intel.parse_vpn_ranges(os.environ.get('VPN_RANGES', ''))
 
 
-def invia_webhook(file_id, ip_rilevato, scenario):
+def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale'):
     if not WEBHOOK_URL:
         return
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -27,6 +30,7 @@ def invia_webhook(file_id, ip_rilevato, scenario):
                 "fields": [
                     {"name": "File", "value": file_id, "inline": True},
                     {"name": "IP sorgente", "value": ip_rilevato, "inline": True},
+                    {"name": "Tipo di Allarme", "value": threat_type.upper(), "inline": True},
                     {"name": "Timestamp", "value": timestamp, "inline": False}
                 ],
                 "footer": {"text": "Cloud Active Defense — Modulo Radar"}
@@ -34,7 +38,7 @@ def invia_webhook(file_id, ip_rilevato, scenario):
         }
     else:
         payload = {
-            "text": f"*ALLARME CRITICO: {scenario}*\nFile: `{file_id}`\nIP: `{ip_rilevato}`\nTimestamp: {timestamp}"
+            "text": f"*ALLARME CRITICO: {scenario}*\nFile: `{file_id}`\nIP: `{ip_rilevato}`\nTipo: `{threat_type.upper()}`\nTimestamp: {timestamp}"
         }
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(
@@ -73,7 +77,7 @@ def invia_allarme_sns(file_id, ip_rilevato, scenario):
         print(f"[ERRORE SNS] Impossibile inviare la notifica: {e}")
 
 
-def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0):
+def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0, threat_type=None):
     try:
         s3_client = boto3.client('s3', endpoint_url=LOCALSTACK_ENDPOINT, region_name=APP_REGION)
         log_data = {
@@ -86,7 +90,8 @@ def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0)
                 "bucketName": BUCKET_AUDIT_LOGS,
                 "documento": file_id
             },
-            "geo": {"lat": lat, "lon": lon}
+            "geo": {"lat": lat, "lon": lon},
+            "threat_type": threat_type or 'normale',
         }
         nome_log = f"esfiltrazione_{int(time.time())}.json"
         s3_client.put_object(
@@ -123,8 +128,9 @@ def lambda_handler(event, context):
         print("SCENARIO A: File reale aperto dall'ufficio. Tutto regolare.")
     else:
         print("SCENARIO B: ESFILTRAZIONE! FILE REALE APERTO FUORI DALL'AZIENDA!")
-        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon)
-        invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale")
+        tipo = threat_intel.classifica_ip(attacker_ip, TOR_SET, VPN_RANGES)
+        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon, threat_type=tipo)
+        invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale", threat_type=tipo)
         # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
         print(f"-> L'IP {attacker_ip} non appartiene alla rete aziendale.")
 

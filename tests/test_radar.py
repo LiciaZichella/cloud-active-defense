@@ -106,3 +106,13 @@ def test_log_contiene_versione_evento(mock_boto):
     radar.lambda_handler(make_event(ip=IP_ESTERNO), None)
     body = json.loads(mock_s3.put_object.call_args[1]['Body'])
     assert body['eventVersion'] == '1.08'
+
+
+@patch('radar.boto3.client')
+def test_log_contiene_threat_type(mock_boto):
+    mock_s3 = MagicMock()
+    mock_boto.return_value = mock_s3
+    radar.lambda_handler(make_event(ip=IP_ESTERNO), None)
+    body = json.loads(mock_s3.put_object.call_args[1]['Body'])
+    assert 'threat_type' in body
+    assert body['threat_type'] == 'normale'
