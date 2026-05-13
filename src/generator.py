@@ -8,6 +8,7 @@ import os
 import json
 import random
 import camouflage
+import multi_format
 from faker import Faker
 from config import CONFIG
 from reportlab.pdfgen import canvas
@@ -99,27 +100,27 @@ def genera_lotto(n_honey, n_real):
 
     nomi_usati = set()
 
-    for _ in range(n_honey):
-        cat = random.choice(camouflage.CATEGORIE)
-        nome = camouflage.genera_nome_documento(cat)
-        while nome in nomi_usati:
+    for prefisso, n in [('HONEY', n_honey), ('REAL', n_real)]:
+        for _ in range(n):
+            cat = random.choice(camouflage.CATEGORIE)
+            fmt = camouflage.FORMATO_PER_CATEGORIA[cat]
             nome = camouflage.genera_nome_documento(cat)
-        nomi_usati.add(nome)
-        contenuto = camouflage.genera_contenuto_documento(cat, fake)
-        autore = camouflage.seleziona_autore(hr_data)
-        crea_e_carica_documento(nome, nome.replace('.pdf', '').replace('_', ' '),
-                                contenuto, 'HONEY', autore=autore, categoria=cat)
-
-    for _ in range(n_real):
-        cat = random.choice(camouflage.CATEGORIE)
-        nome = camouflage.genera_nome_documento(cat)
-        while nome in nomi_usati:
-            nome = camouflage.genera_nome_documento(cat)
-        nomi_usati.add(nome)
-        contenuto = camouflage.genera_contenuto_documento(cat, fake)
-        autore = camouflage.seleziona_autore(hr_data)
-        crea_e_carica_documento(nome, nome.replace('.pdf', '').replace('_', ' '),
-                                contenuto, 'REAL', autore=autore, categoria=cat)
+            while nome in nomi_usati:
+                nome = camouflage.genera_nome_documento(cat)
+            nomi_usati.add(nome)
+            contenuto = camouflage.genera_contenuto_documento(cat, fake)
+            autore = camouflage.seleziona_autore(hr_data)
+            titolo = nome.rsplit('.', 1)[0].replace('_', ' ')
+            beacon_url = f"{RADAR_URL}?file_id={prefisso}_{uuid.uuid4().hex[:8]}"
+            if fmt == 'pdf':
+                crea_e_carica_documento(nome, titolo, contenuto, prefisso,
+                                        autore=autore, categoria=cat)
+            elif fmt == 'docx':
+                multi_format.crea_documento_docx(nome, titolo, contenuto,
+                                                 beacon_url, prefisso, autore)
+            elif fmt == 'xlsx':
+                multi_format.crea_documento_xlsx(nome, titolo, contenuto,
+                                                 beacon_url, prefisso, autore)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,14 @@
 import boto3
 import json
+import os
+import sys
 from datetime import datetime
 import uuid
 from config import CONFIG
 import geoip2.database
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
+import camouflage
 
 
 def _geo_lookup(ip):
@@ -73,11 +78,15 @@ def registra_esfiltrazione_esterna(ip_esterno, nome_file, lat, lon):
 if __name__ == "__main__":
     print("--- AVVIO SIMULAZIONE GLOBALE (Traffico Interno + Attacco Esterno) ---")
 
-    registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50", nome_file="Bilancio_Riservato_2026.pdf")
-    registra_download(utente="luigi.verdi", ip_aziendale="10.0.0.15", nome_file="Stipendi_Dirigenza_HONEYFILE.pdf")
+    nome_honey_1 = camouflage.genera_nome_documento('bilancio')
+    nome_honey_2 = camouflage.genera_nome_documento('risorse_umane')
+    nome_real    = camouflage.genera_nome_documento('progetto')
+
+    registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50", nome_file=nome_honey_1)
+    registra_download(utente="luigi.verdi", ip_aziendale="10.0.0.15",    nome_file=nome_honey_2)
 
     ip_ext = "203.0.113.88"
     lat, lon = _geo_lookup(ip_ext)
-    registra_esfiltrazione_esterna(ip_esterno=ip_ext, nome_file="Progetto_Infrastruttura_Rete.pdf", lat=lat, lon=lon)
+    registra_esfiltrazione_esterna(ip_esterno=ip_ext, nome_file=nome_real, lat=lat, lon=lon)
 
     print("\n Tutti i log sono stati archiviati in modo immutabile su S3. Apri la Dashboard!")

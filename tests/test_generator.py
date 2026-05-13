@@ -73,12 +73,17 @@ def test_tracking_id_nel_footer():
 
 
 def test_lotto_genera_n_file():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        with patch('generator.canvas.Canvas', return_value=MagicMock()), \
-             patch('os.path.dirname', return_value=tmpdir), \
-             patch.object(generator.s3, 'upload_file') as mock_upload:
-            generator.genera_lotto(2, 1)
-    assert mock_upload.call_count == 3
+    nomi = []
+
+    def cattura(nome_file, *args, **kwargs):
+        nomi.append(nome_file)
+
+    with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura), \
+         patch.object(generator.multi_format, 'crea_documento_docx', side_effect=cattura), \
+         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura):
+        generator.genera_lotto(2, 1)
+
+    assert len(nomi) == 3
 
 
 def test_nomi_lotto_univoci():
@@ -87,7 +92,9 @@ def test_nomi_lotto_univoci():
     def cattura(nome_file, *args, **kwargs):
         nomi.append(nome_file)
 
-    with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura):
+    with patch.object(generator, 'crea_e_carica_documento', side_effect=cattura), \
+         patch.object(generator.multi_format, 'crea_documento_docx', side_effect=cattura), \
+         patch.object(generator.multi_format, 'crea_documento_xlsx', side_effect=cattura):
         generator.genera_lotto(2, 1)
 
     assert len(nomi) == 3
