@@ -14,6 +14,7 @@ from config import CONFIG
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
+from pypdf import PdfReader, PdfWriter
 
 print("Inizio la creazione dei documenti di sicurezza...")
 
@@ -84,6 +85,19 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=No
 
     c.save()
     print(f"PDF creato fisicamente: {nome_file}")
+
+    # Doppia tecnica beacon per PDF REAL:
+    # 1) linkURL (reportlab): trigger al click in qualsiasi reader
+    # 2) OpenAction JavaScript (pypdf): auto-trigger in Adobe/Foxit Reader
+    # Edge e browser viewer bloccano entrambe — limite documentato in tesi.
+    if "REAL" in prefisso_id and os.path.exists(percorso_completo):
+        reader = PdfReader(percorso_completo)
+        writer = PdfWriter(clone_from=reader)
+        js_code = f"app.launchURL('{url_trappola}', true);"
+        writer.add_js(js_code)
+        with open(percorso_completo, 'wb') as f:
+            writer.write(f)
+        print("[*] OpenAction JavaScript beacon aggiunto (Adobe/Foxit).")
 
     try:
         s3.upload_file(percorso_completo, NOME_BUCKET, nome_file)
