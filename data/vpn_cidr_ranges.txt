@@ -1,0 +1,18 @@
+# CIDR di provider VPN noti (ProtonVPN, NordVPN, Mullvad, ExpressVPN)
+# Lista statica per simulazione - in produzione MaxMind/IPinfo API
+185.159.157.0/24    # ProtonVPN Switzerland
+193.138.219.0/24    # ProtonVPN Netherlands
+185.107.80.0/24     # ProtonVPN Sweden
+194.126.177.0/24    # ProtonVPN Germany
+45.83.91.0/24       # NordVPN Netherlands
+194.165.16.0/24     # NordVPN Germany
+31.13.192.0/24      # NordVPN France
+84.247.56.0/24      # NordVPN UK
+193.32.127.0/24     # Mullvad Sweden
+91.90.44.0/24       # Mullvad Netherlands
+185.65.134.0/24     # Mullvad Germany
+45.131.209.0/24     # Mullvad Switzerland
+146.70.0.0/16       # ExpressVPN range esempio
+178.162.208.0/20    # ExpressVPN Europe
+84.17.58.0/24       # Surfshark Lithuania
+45.91.92.0/22       # Surfshark Netherlands

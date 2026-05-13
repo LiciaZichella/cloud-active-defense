@@ -60,21 +60,23 @@ def carica_log_auditing():
                     else:
                         status = 'Download Regolare'
                     geo = log.get('geo', {'lat': None, 'lon': None})
+                    threat = log.get('threat_type', 'normale')
                     logs.append({
                         'utente': log.get('userIdentity', {}).get('userName', 'Sconosciuto'),
                         'file': nome_doc,
                         'ip': log.get('sourceIPAddress', '0.0.0.0'),
                         'ora': log.get('eventTime', 'N/A'),
                         'status': status,
+                        'threat': threat,
                         'lat': geo.get('lat'),
                         'lon': geo.get('lon'),
                     })
                 except Exception:
                     pass
-        cols = ['utente', 'file', 'ip', 'ora', 'status', 'lat', 'lon']
+        cols = ['utente', 'file', 'ip', 'ora', 'status', 'threat', 'lat', 'lon']
         df = pd.DataFrame(logs) if logs else pd.DataFrame(columns=cols)
         if not df.empty:
             df = df.sort_values(by='ora', ascending=False).reset_index(drop=True)
         return df
     except Exception:
-        return pd.DataFrame(columns=['utente', 'file', 'ip', 'ora', 'status', 'lat', 'lon'])
+        return pd.DataFrame(columns=['utente', 'file', 'ip', 'ora', 'status', 'threat', 'lat', 'lon'])

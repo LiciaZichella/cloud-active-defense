@@ -26,9 +26,15 @@ lambda_env = {
     'WEBHOOK_URL':         CONFIG['alerts']['webhook_url']
 }
 
+tor_path = os.path.join('data', 'tor_exit_nodes.txt')
+vpn_path = os.path.join('data', 'vpn_cidr_ranges.txt')
+lambda_env['TOR_NODES'] = open(tor_path, encoding='utf-8').read() if os.path.exists(tor_path) else ''
+lambda_env['VPN_RANGES'] = open(vpn_path, encoding='utf-8').read() if os.path.exists(vpn_path) else ''
+
 print("\n[*] 1. Impacchettamento funzione Lambda (radar.zip)...")
 with zipfile.ZipFile("radar.zip", "w") as z:
     z.write(os.path.join("src", "radar.py"), arcname="radar.py")
+    z.write(os.path.join("src", "threat_intel.py"), arcname="threat_intel.py")
 
 print("[*] 2. Connessione al Cloud (LocalStack)...")
 lambda_client = boto3.client(
