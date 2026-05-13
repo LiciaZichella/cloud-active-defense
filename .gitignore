@@ -1,5 +1,7 @@
 localstack-data/
 *.pdf
+*.docx
+*.xlsx
 .claude/
 data/geoip/*.mmdb
 __pycache__/
