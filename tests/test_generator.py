@@ -86,6 +86,52 @@ def test_lotto_genera_n_file():
     assert len(nomi) == 3
 
 
+def test_pdf_real_contiene_javascript_beacon():
+    from pypdf import PdfReader
+    src_dir = os.path.dirname(generator.__file__)
+    percorso = os.path.join(src_dir, '_test_beacon.pdf')
+    try:
+        with patch.object(generator.s3, 'upload_file'):
+            generator.crea_e_carica_documento(
+                '_test_beacon.pdf', 'Titolo Test', 'Contenuto test', 'REAL'
+            )
+        reader = PdfReader(percorso)
+        root = reader.trailer['/Root']
+        # pypdf decodifica le escape ottali — qui leggiamo la stringa JS decodificata
+        js_names = root['/Names']['/JavaScript']['/Names']
+        action = js_names[1]
+        if hasattr(action, 'get_object'):
+            action = action.get_object()
+        js_code = str(action['/JS'])
+        assert 'app.launchURL' in js_code
+        assert 'http://localhost:8080/radar' in js_code
+    finally:
+        if os.path.exists(percorso):
+            os.remove(percorso)
+
+
+def test_pdf_honey_senza_javascript():
+    from pypdf import PdfReader
+    src_dir = os.path.dirname(generator.__file__)
+    percorso = os.path.join(src_dir, '_test_honey.pdf')
+    try:
+        with patch.object(generator.s3, 'upload_file'):
+            generator.crea_e_carica_documento(
+                '_test_honey.pdf', 'Titolo Test', 'Contenuto test', 'HONEY'
+            )
+        reader = PdfReader(percorso)
+        root = reader.trailer['/Root']
+        # I PDF Honey non devono avere il blocco /JavaScript nel catalog
+        has_js = (
+            '/Names' in root
+            and '/JavaScript' in root.get('/Names', {})
+        )
+        assert not has_js
+    finally:
+        if os.path.exists(percorso):
+            os.remove(percorso)
+
+
 def test_nomi_lotto_univoci():
     nomi = []
 
