@@ -55,7 +55,8 @@ try:
         Role='arn:aws:iam::000000000000:role/lambda-role',
         Handler='radar.lambda_handler',
         Code=dict(ZipFile=zipped_code),
-        Environment={'Variables': lambda_env}
+        Environment={'Variables': lambda_env},
+        Timeout=30
     )
     print(" Lambda 'RadarFunction' installata e pronta!")
 except Exception as e:
@@ -63,7 +64,8 @@ except Exception as e:
         lambda_client.update_function_code(FunctionName='RadarFunction', ZipFile=zipped_code)
         lambda_client.update_function_configuration(
             FunctionName='RadarFunction',
-            Environment={'Variables': lambda_env}
+            Environment={'Variables': lambda_env},
+            Timeout=30
         )
         print(" Lambda 'RadarFunction' aggiornata!")
     else:
