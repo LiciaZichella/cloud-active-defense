@@ -16,6 +16,8 @@ RETE_INTERNA_AZIENDALE = os.environ.get('INTERNAL_IPS', '192.168.1.50,10.0.0.15,
 WEBHOOK_URL = os.environ.get('WEBHOOK_URL', '')
 TOR_SET = threat_intel.parse_tor_nodes(os.environ.get('TOR_NODES', ''))
 VPN_RANGES = threat_intel.parse_vpn_ranges(os.environ.get('VPN_RANGES', ''))
+REMEDIATION_ENABLED = os.environ.get('REMEDIATION_ENABLED', 'true').lower() == 'true'
+REMEDIATION_ROLE = os.environ.get('REMEDIATION_ROLE', 'EmployeeRole')
 
 
 def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale'):
@@ -105,6 +107,68 @@ def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0,
         print(f"[ERRORE S3] Impossibile salvare il log di esfiltrazione: {e}")
 
 
+def trova_downloader(file_id, s3_client, bucket_logs):
+    try:
+        mapping_key = f"beacon_mapping/{file_id}.json"
+        obj = s3_client.get_object(Bucket=bucket_logs, Key=mapping_key)
+        mapping = json.loads(obj['Body'].read())
+        file_name = mapping['file_name']
+    except Exception:
+        return None
+
+    try:
+        result = s3_client.list_objects_v2(
+            Bucket=bucket_logs, Prefix='cloudtrail_logs/'
+        )
+        downloader = None
+        ultimo_ts = ''
+        for item in result.get('Contents', []):
+            log_obj = s3_client.get_object(Bucket=bucket_logs, Key=item['Key'])
+            log = json.loads(log_obj['Body'].read())
+            req = log.get('requestParameters', {})
+            if req.get('documento') == file_name:
+                ts = log.get('eventTime', '')
+                if ts > ultimo_ts:
+                    ultimo_ts = ts
+                    downloader = log.get('userIdentity', {}).get('userName')
+        return downloader
+    except Exception:
+        return None
+
+
+def revoca_permessi_iam(username, role_name, motivo, bucket_logs, s3_client):
+    try:
+        iam = boto3.client('iam', endpoint_url=LOCALSTACK_ENDPOINT, region_name=APP_REGION)
+        attached = iam.list_attached_role_policies(RoleName=role_name)
+        policies_revocate = []
+        for p in attached.get('AttachedPolicies', []):
+            iam.detach_role_policy(RoleName=role_name, PolicyArn=p['PolicyArn'])
+            policies_revocate.append(p['PolicyName'])
+        remediation_log = {
+            "eventVersion": "1.08",
+            "eventTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "eventName": "AutoRemediation",
+            "userIdentity": {"userName": username},
+            "requestParameters": {
+                "roleName": role_name,
+                "policiesRevoked": policies_revocate,
+                "motivo": motivo
+            }
+        }
+        nome_log = f"remediation_{int(time.time())}.json"
+        s3_client.put_object(
+            Bucket=bucket_logs, Key=nome_log,
+            Body=json.dumps(remediation_log),
+            ContentType="application/json"
+        )
+        print(f"[REMEDIATION] Revocate {len(policies_revocate)} policy "
+              f"dal ruolo {role_name} per {username}")
+        return policies_revocate
+    except Exception as e:
+        print(f"[ERRORE REMEDIATION] {e}")
+        return []
+
+
 def lambda_handler(event, context):
     """
     AWS Lambda — intercetta il Web Beacon quando un PDF reale viene aperto.
@@ -133,6 +197,16 @@ def lambda_handler(event, context):
         invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale", threat_type=tipo)
         # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
         print(f"-> L'IP {attacker_ip} non appartiene alla rete aziendale.")
+        if REMEDIATION_ENABLED:
+            s3_client = boto3.client('s3', endpoint_url=LOCALSTACK_ENDPOINT, region_name=APP_REGION)
+            downloader = trova_downloader(file_id, s3_client, BUCKET_AUDIT_LOGS)
+            if downloader:
+                motivo = f"Esfiltrazione rilevata: {file_id} aperto da IP {attacker_ip}"
+                if tipo != 'normale':
+                    motivo += f" via {tipo.upper()}"
+                revoca_permessi_iam(downloader, REMEDIATION_ROLE, motivo, BUCKET_AUDIT_LOGS, s3_client)
+            else:
+                print(f"[REMEDIATION] Downloader non identificato per {file_id}")
 
     # Pagina di errore inline — Fix C2: rimosso path fisso Windows
     html_errore = """

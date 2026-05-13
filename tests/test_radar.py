@@ -116,3 +116,17 @@ def test_log_contiene_threat_type(mock_boto):
     body = json.loads(mock_s3.put_object.call_args[1]['Body'])
     assert 'threat_type' in body
     assert body['threat_type'] == 'normale'
+
+
+@patch('radar.revoca_permessi_iam')
+@patch('radar.trova_downloader', return_value='mario.rossi')
+@patch('radar.boto3.client')
+def test_scenario_b_chiama_remediation(mock_boto, mock_trova, mock_revoca):
+    mock_boto.return_value = MagicMock()
+    original = radar.REMEDIATION_ENABLED
+    radar.REMEDIATION_ENABLED = True
+    try:
+        radar.lambda_handler(make_event(ip=IP_ESTERNO), None)
+        mock_revoca.assert_called_once()
+    finally:
+        radar.REMEDIATION_ENABLED = original

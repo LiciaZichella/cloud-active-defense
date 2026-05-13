@@ -42,6 +42,7 @@ def carica_log_auditing():
                     req = log.get('requestParameters', {})
                     nome_doc = req.get('documento', 'Sconosciuto')
                     event_name = log.get('eventName', '')
+                    ip_address = log.get('sourceIPAddress', '0.0.0.0')
                     # Nomi file riconosciuti come honeytoken (devono coincidere con
                     # NOMI_HONEYTOKEN in src/generator.py — se aggiungi tipi nuovi
                     # aggiorna entrambi).
@@ -51,7 +52,11 @@ def carica_log_auditing():
                         'devops_secrets.yaml',
                         'id_rsa_backup',
                     }
-                    if nome_doc in NOMI_HONEYTOKEN:
+                    if event_name == 'AutoRemediation':
+                        status = 'Remediation'
+                        nome_doc = '[remediation]'
+                        ip_address = '[system]'
+                    elif nome_doc in NOMI_HONEYTOKEN:
                         status = 'Honeytoken-Leak'
                     elif 'HONEY' in nome_doc:
                         status = 'Honey-Hit'
@@ -64,7 +69,7 @@ def carica_log_auditing():
                     logs.append({
                         'utente': log.get('userIdentity', {}).get('userName', 'Sconosciuto'),
                         'file': nome_doc,
-                        'ip': log.get('sourceIPAddress', '0.0.0.0'),
+                        'ip': ip_address,
                         'ora': log.get('eventTime', 'N/A'),
                         'status': status,
                         'threat': threat,

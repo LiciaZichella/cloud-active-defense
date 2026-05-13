@@ -2,8 +2,11 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import json
 import boto3
 import os
+from datetime import datetime
+from urllib.parse import urlparse, parse_qs
 from docx import Document
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -11,6 +14,7 @@ import openpyxl
 from config import CONFIG
 
 NOME_BUCKET = CONFIG['buckets']['documents']
+BUCKET_LOGS = CONFIG['buckets']['audit_logs']
 
 s3 = boto3.client(
     's3',
@@ -65,6 +69,23 @@ def crea_documento_docx(nome_file, titolo, contenuto, beacon_url, prefisso_id, a
     doc.save(percorso)
     print(f"DOCX creato: {nome_file}")
     _upload(percorso, nome_file)
+    try:
+        beacon_id = parse_qs(urlparse(beacon_url).query).get('file_id', ['SCONOSCIUTO'])[0]
+        mapping = {
+            "beacon_id": beacon_id,
+            "file_name": nome_file,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "tipo": prefisso_id
+        }
+        s3.put_object(
+            Bucket=BUCKET_LOGS,
+            Key=f"beacon_mapping/{beacon_id}.json",
+            Body=json.dumps(mapping),
+            ContentType="application/json"
+        )
+        print(f"[*] Beacon mapping salvato: {beacon_id} -> {nome_file}")
+    except Exception as e:
+        print(f"NO - Errore salvataggio beacon mapping: {e}")
 
 
 def crea_documento_xlsx(nome_file, titolo, contenuto, beacon_url, prefisso_id, autore):
@@ -88,3 +109,20 @@ def crea_documento_xlsx(nome_file, titolo, contenuto, beacon_url, prefisso_id, a
     wb.save(percorso)
     print(f"XLSX creato: {nome_file}")
     _upload(percorso, nome_file)
+    try:
+        beacon_id = parse_qs(urlparse(beacon_url).query).get('file_id', ['SCONOSCIUTO'])[0]
+        mapping = {
+            "beacon_id": beacon_id,
+            "file_name": nome_file,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "tipo": prefisso_id
+        }
+        s3.put_object(
+            Bucket=BUCKET_LOGS,
+            Key=f"beacon_mapping/{beacon_id}.json",
+            Body=json.dumps(mapping),
+            ContentType="application/json"
+        )
+        print(f"[*] Beacon mapping salvato: {beacon_id} -> {nome_file}")
+    except Exception as e:
+        print(f"NO - Errore salvataggio beacon mapping: {e}")

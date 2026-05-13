@@ -16,11 +16,13 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from pypdf import PdfReader, PdfWriter
+from datetime import datetime
 
 print("Inizio la creazione dei documenti di sicurezza...")
 
 RADAR_URL = CONFIG['radar']['url'] + "/radar"
 NOME_BUCKET = CONFIG['buckets']['documents']
+BUCKET_LOGS = CONFIG['buckets']['audit_logs']
 
 NOMI_HONEYTOKEN = {
     'aws':    'aws_credentials.txt',
@@ -112,6 +114,22 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=No
         print(f"SI - Documento caricato con successo nel caveau S3: {NOME_BUCKET}")
     except Exception as e:
         print(f"NO - Errore durante il caricamento su S3: {e}")
+    try:
+        mapping = {
+            "beacon_id": beacon_id,
+            "file_name": nome_file,
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "tipo": prefisso_id
+        }
+        s3.put_object(
+            Bucket=BUCKET_LOGS,
+            Key=f"beacon_mapping/{beacon_id}.json",
+            Body=json.dumps(mapping),
+            ContentType="application/json"
+        )
+        print(f"[*] Beacon mapping salvato: {beacon_id} -> {nome_file}")
+    except Exception as e:
+        print(f"NO - Errore salvataggio beacon mapping: {e}")
 
 
 def crea_e_carica_honeytoken(tipo):
