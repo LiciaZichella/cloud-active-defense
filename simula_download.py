@@ -85,6 +85,10 @@ if __name__ == "__main__":
     registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50", nome_file=nome_honey_1)
     registra_download(utente="luigi.verdi", ip_aziendale="10.0.0.15",    nome_file=nome_honey_2)
 
+    # Simulazione: un dipendente curioso accede a un honeytoken
+    registra_download(utente="anna.bianchi", ip_aziendale="172.16.0.5",
+                      nome_file="aws_credentials.txt")
+
     ip_ext = "203.0.113.88"
     lat, lon = _geo_lookup(ip_ext)
     registra_esfiltrazione_esterna(ip_esterno=ip_ext, nome_file=nome_real, lat=lat, lon=lon)

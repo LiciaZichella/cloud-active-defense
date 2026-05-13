@@ -42,7 +42,18 @@ def carica_log_auditing():
                     req = log.get('requestParameters', {})
                     nome_doc = req.get('documento', 'Sconosciuto')
                     event_name = log.get('eventName', '')
-                    if 'HONEY' in nome_doc:
+                    # Nomi file riconosciuti come honeytoken (devono coincidere con
+                    # NOMI_HONEYTOKEN in src/generator.py — se aggiungi tipi nuovi
+                    # aggiorna entrambi).
+                    NOMI_HONEYTOKEN = {
+                        'aws_credentials.txt',
+                        '.env.production',
+                        'devops_secrets.yaml',
+                        'id_rsa_backup',
+                    }
+                    if nome_doc in NOMI_HONEYTOKEN:
+                        status = 'Honeytoken-Leak'
+                    elif 'HONEY' in nome_doc:
                         status = 'Honey-Hit'
                     elif event_name == 'Exfiltration':
                         status = 'Esfiltrazione'
