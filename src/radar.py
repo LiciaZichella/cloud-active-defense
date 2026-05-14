@@ -20,7 +20,7 @@ REMEDIATION_ENABLED = os.environ.get('REMEDIATION_ENABLED', 'true').lower() == '
 REMEDIATION_ROLE = os.environ.get('REMEDIATION_ROLE', 'EmployeeRole')
 
 
-def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale'):
+def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale', signature_status='UNKNOWN'):
     if not WEBHOOK_URL:
         return
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -33,6 +33,7 @@ def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale'):
                     {"name": "File", "value": file_id, "inline": True},
                     {"name": "IP sorgente", "value": ip_rilevato, "inline": True},
                     {"name": "Tipo di Allarme", "value": threat_type.upper(), "inline": True},
+                    {"name": "Firma", "value": signature_status, "inline": True},
                     {"name": "Timestamp", "value": timestamp, "inline": False}
                 ],
                 "footer": {"text": "Cloud Active Defense — Modulo Radar"}
@@ -40,7 +41,7 @@ def invia_webhook(file_id, ip_rilevato, scenario, threat_type='normale'):
         }
     else:
         payload = {
-            "text": f"*ALLARME CRITICO: {scenario}*\nFile: `{file_id}`\nIP: `{ip_rilevato}`\nTipo: `{threat_type.upper()}`\nTimestamp: {timestamp}"
+            "text": f"*ALLARME CRITICO: {scenario}*\nFile: `{file_id}`\nIP: `{ip_rilevato}`\nTipo: `{threat_type.upper()}`\nFirma: `{signature_status}`\nTimestamp: {timestamp}"
         }
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(
@@ -79,7 +80,7 @@ def invia_allarme_sns(file_id, ip_rilevato, scenario):
         print(f"[ERRORE SNS] Impossibile inviare la notifica: {e}")
 
 
-def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0, threat_type=None):
+def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0, threat_type=None, signature_status=None):
     try:
         s3_client = boto3.client('s3', endpoint_url=LOCALSTACK_ENDPOINT, region_name=APP_REGION)
         log_data = {
@@ -94,6 +95,7 @@ def registra_esfiltrazione_s3(file_id, ip_rilevato, timestamp, lat=0.0, lon=0.0,
             },
             "geo": {"lat": lat, "lon": lon},
             "threat_type": threat_type or 'normale',
+            "signature_status": signature_status or 'UNKNOWN',
         }
         nome_log = f"esfiltrazione_{int(time.time())}.json"
         s3_client.put_object(
@@ -193,8 +195,10 @@ def lambda_handler(event, context):
     else:
         print("SCENARIO B: ESFILTRAZIONE! FILE REALE APERTO FUORI DALL'AZIENDA!")
         tipo = threat_intel.classifica_ip(attacker_ip, TOR_SET, VPN_RANGES)
-        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon, threat_type=tipo)
-        invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale", threat_type=tipo)
+        signature_status = event.get('signatureStatus', 'UNKNOWN')
+        signer = event.get('signer')
+        registra_esfiltrazione_s3(file_id, attacker_ip, timestamp, geo_lat, geo_lon, threat_type=tipo, signature_status=signature_status)
+        invia_webhook(file_id, attacker_ip, "DLP ALERT: File Reale aperto fuori perimetro aziendale", threat_type=tipo, signature_status=signature_status)
         # invia_allarme_sns(file_id, attacker_ip, "DLP ALERT: File Reale fuori perimetro")
         print(f"-> L'IP {attacker_ip} non appartiene alla rete aziendale.")
         if REMEDIATION_ENABLED:
@@ -204,6 +208,8 @@ def lambda_handler(event, context):
                 motivo = f"Esfiltrazione rilevata: {file_id} aperto da IP {attacker_ip}"
                 if tipo != 'normale':
                     motivo += f" via {tipo.upper()}"
+                if signature_status != 'VALID':
+                    motivo += f", firma {signature_status}"
                 revoca_permessi_iam(downloader, REMEDIATION_ROLE, motivo, BUCKET_AUDIT_LOGS, s3_client)
             else:
                 print(f"[REMEDIATION] Downloader non identificato per {file_id}")

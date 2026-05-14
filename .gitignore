@@ -4,6 +4,7 @@ localstack-data/
 *.xlsx
 .claude/
 data/geoip/*.mmdb
+data/keys/
 __pycache__/
 *.pyc
 src/aws_credentials.txt

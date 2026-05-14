@@ -10,6 +10,7 @@ import random
 import camouflage
 import multi_format
 import honeytoken
+import pdf_signer
 from faker import Faker
 from config import CONFIG
 from reportlab.pdfgen import canvas
@@ -130,6 +131,22 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=No
         print(f"[*] Beacon mapping salvato: {beacon_id} -> {nome_file}")
     except Exception as e:
         print(f"NO - Errore salvataggio beacon mapping: {e}")
+
+    # Firma digitale — si applica sia agli honey che ai file reali (camouflage)
+    _key_path = Path(__file__).parent.parent / 'data' / 'keys' / 'acme_private.pem'
+    _cert_path = Path(__file__).parent.parent / 'data' / 'keys' / 'acme_cert.pem'
+    if _key_path.exists() and _cert_path.exists():
+        esito = pdf_signer.firma_pdf(percorso_completo, str(_cert_path), str(_key_path))
+        if esito['success']:
+            try:
+                s3.upload_file(percorso_completo, NOME_BUCKET, nome_file)
+                print(f"[*] PDF firmato e re-uploadato: {nome_file}")
+            except Exception as e:
+                print(f"NO - Errore re-upload PDF firmato: {e}")
+        else:
+            print(f"[WARN] Firma fallita: {esito['reason']}")
+    else:
+        print("[WARN] Chiavi non trovate. Esegui genera_chiavi.py prima per attivare la firma")
 
 
 def crea_e_carica_honeytoken(tipo):
