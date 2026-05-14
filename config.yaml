@@ -39,3 +39,16 @@ geoip:
 remediation:
   enabled: true
   role_to_revoke: "EmployeeRole"
+
+behavioral:
+  download_burst:
+    soglia_n: 10
+    finestra_minuti: 5
+  off_hours:
+    ora_inizio: 8
+    ora_fine: 19
+  mass_access:
+    soglia_n: 15
+    finestra_minuti: 30
+  recon_pattern:
+    finestra_minuti: 10

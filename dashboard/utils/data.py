@@ -52,7 +52,11 @@ def carica_log_auditing():
                         'devops_secrets.yaml',
                         'id_rsa_backup',
                     }
-                    if event_name == 'AutoRemediation':
+                    if event_name == 'BehavioralAlert':
+                        status = 'Behavioral-Alert'
+                        nome_doc = log.get('rule', 'behavioral')
+                        ip_address = '[detector]'
+                    elif event_name == 'AutoRemediation':
                         status = 'Remediation'
                         nome_doc = '[remediation]'
                         ip_address = '[system]'
