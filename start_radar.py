@@ -1,4 +1,5 @@
 import boto3
+import sys
 import zipfile
 import os
 import json
@@ -7,6 +8,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from config import CONFIG
 import geoip2.database
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
+import pdf_verifier
 
 print("FASE 3: INIZIALIZZAZIONE SISTEMA DI DIFESA ATTIVA")
 
@@ -32,6 +36,37 @@ lambda_env['TOR_NODES'] = open(tor_path, encoding='utf-8').read() if os.path.exi
 lambda_env['VPN_RANGES'] = open(vpn_path, encoding='utf-8').read() if os.path.exists(vpn_path) else ''
 lambda_env['REMEDIATION_ENABLED'] = str(CONFIG['remediation']['enabled']).lower()
 lambda_env['REMEDIATION_ROLE'] = CONFIG['remediation']['role_to_revoke']
+
+s3_client = boto3.client(
+    's3', endpoint_url=endpoint,
+    aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region,
+)
+
+_CERT_PATH = os.path.join('data', 'keys', 'acme_cert.pem')
+
+
+def _verifica_signature(file_id):
+    """Legge il documento da S3 e verifica la firma digitale (pattern host-side come GeoIP)."""
+    cert_pem = None
+    if os.path.exists(_CERT_PATH):
+        with open(_CERT_PATH, 'rb') as _f:
+            cert_pem = _f.read()
+
+    try:
+        mapping_key = f"beacon_mapping/{file_id}.json"
+        obj = s3_client.get_object(Bucket=CONFIG['buckets']['audit_logs'], Key=mapping_key)
+        mapping = json.loads(obj['Body'].read())
+        file_name = mapping['file_name']
+    except Exception:
+        return {'status': 'UNKNOWN', 'signer': None, 'reason': 'Mapping beacon non trovato'}
+
+    try:
+        doc_obj = s3_client.get_object(Bucket=CONFIG['buckets']['documents'], Key=file_name)
+        pdf_bytes = doc_obj['Body'].read()
+        return pdf_verifier.verifica_firma(pdf_bytes, cert_pem)
+    except Exception as e:
+        return {'status': 'UNKNOWN', 'signer': None, 'reason': f'Errore lettura documento: {e}'}
+
 
 print("\n[*] 1. Impacchettamento funzione Lambda (radar.zip)...")
 with zipfile.ZipFile("radar.zip", "w") as z:
@@ -85,6 +120,9 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
             client_ip = self.client_address[0]
             geo_lat, geo_lon = _geo_lookup(client_ip)
 
+            file_id = query_params.get('file_id', 'SCONOSCIUTO')
+            sig_info = _verifica_signature(file_id)
+
             event = {
                 "queryStringParameters": query_params,
                 "headers": dict(self.headers),
@@ -92,7 +130,9 @@ class APIGatewayProxy(BaseHTTPRequestHandler):
                     "identity": {"sourceIp": client_ip}
                 },
                 "geoLat": geo_lat,
-                "geoLon": geo_lon
+                "geoLon": geo_lon,
+                "signatureStatus": sig_info['status'],
+                "signer": sig_info.get('signer'),
             }
 
             response = lambda_client.invoke(

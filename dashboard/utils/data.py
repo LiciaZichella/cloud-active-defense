@@ -78,6 +78,7 @@ def carica_log_auditing():
                         status = 'Download Regolare'
                     geo = log.get('geo', {'lat': None, 'lon': None})
                     threat = log.get('threat_type', 'normale')
+                    signature = log.get('signature_status') if event_name == 'Exfiltration' else None
                     logs.append({
                         'utente': log.get('userIdentity', {}).get('userName', 'Sconosciuto'),
                         'file': nome_doc,
@@ -85,13 +86,14 @@ def carica_log_auditing():
                         'ora': log.get('eventTime', 'N/A'),
                         'status': status,
                         'threat': threat,
+                        'signature': signature,
                         'lat': geo.get('lat'),
                         'lon': geo.get('lon'),
                     })
                 except Exception:
                     pass
 
-        cols = ['utente', 'file', 'ip', 'ora', 'status', 'threat', 'lat', 'lon',
+        cols = ['utente', 'file', 'ip', 'ora', 'status', 'threat', 'signature', 'lat', 'lon',
                 'dwell_seconds', 'dwell_human']
         df = pd.DataFrame(logs) if logs else pd.DataFrame(columns=cols)
         if not df.empty:
@@ -132,6 +134,6 @@ def carica_log_auditing():
         return df
     except Exception:
         return pd.DataFrame(columns=[
-            'utente', 'file', 'ip', 'ora', 'status', 'threat', 'lat', 'lon',
+            'utente', 'file', 'ip', 'ora', 'status', 'threat', 'signature', 'lat', 'lon',
             'dwell_seconds', 'dwell_human',
         ])
