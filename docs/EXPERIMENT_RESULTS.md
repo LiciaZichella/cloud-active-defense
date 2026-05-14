@@ -1,6 +1,6 @@
 # Risultati Esperimenti — Cloud Active Defense
 
-*Generato automaticamente da benchmark.py — 2026-05-14 18:15:04*
+*Generato automaticamente da benchmark.py — 2026-05-14 18:24:59*
 
 ---
 
@@ -12,9 +12,9 @@ caldo); le successive 10 rappresentano il regime stazionario ("warm").
 
 | Metrica | Valore |
 |---|---|
-| Cold-start | 0.000 s |
-| Warm — media (10 invocazioni) | 0.000 s |
-| Warm — deviazione standard | 0.000 s |
+| Cold-start | 4.520 s |
+| Warm — media (10 invocazioni) | 2.677 s |
+| Warm — deviazione standard | 0.666 s |
 
 ![Detection Time](charts/detection_time.png)
 
@@ -54,9 +54,9 @@ generazione PDF sottostante.
 
 | Condizione | Tempo medio |
 |---|---|
-| Senza firma | 0.4 ms |
-| Con firma RSA-2048 | 545.7 ms |
-| Overhead netto | 545.3 ms (+129831.0%) |
+| Senza firma | 0.1 ms |
+| Con firma RSA-2048 | 566.2 ms |
+| Overhead netto | 566.1 ms (+808714.3%) |
 
 ![Overhead Firma](charts/signature_overhead.png)
 
