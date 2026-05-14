@@ -1,7 +1,7 @@
 metric_name,value,unit,notes
-cold_time_s,0.0,s,Prima invocazione Lambda (cold-start)
-warm_time_avg_s,0.0,s,Media 10 invocazioni warm
-warm_time_std_s,0.0,s,Deviazione standard warm
+cold_time_s,4.5197,s,Prima invocazione Lambda (cold-start)
+warm_time_avg_s,2.6771,s,Media 10 invocazioni warm
+warm_time_std_s,0.6661,s,Deviazione standard warm
 behavioral_total_events,500,count,Dataset sintetico normale
 behavioral_total_alerts,1,count,Alert prodotti su dataset normale
 behavioral_false_positive_rate,0.002,ratio,Tasso falsi positivi (alert/eventi)
@@ -9,8 +9,8 @@ behavioral_alerts_download_burst,0,count,Alert regola download_burst
 behavioral_alerts_off_hours,0,count,Alert regola off_hours
 behavioral_alerts_mass_access,1,count,Alert regola mass_access
 behavioral_alerts_recon_pattern,0,count,Alert regola recon_pattern
-avg_with_signature_ms,545.71,ms,Media 20 PDF con firma RSA-2048
-avg_without_signature_ms,0.42,ms,Media 20 PDF senza firma (mock)
-signature_overhead_ms,545.29,ms,Overhead netto firma digitale
+avg_with_signature_ms,566.18,ms,Media 20 PDF con firma RSA-2048
+avg_without_signature_ms,0.07,ms,Media 20 PDF senza firma (mock)
+signature_overhead_ms,566.1,ms,Overhead netto firma digitale
 pdf_activation_rate,0.75,ratio,3/4 PDF reader attivano il beacon
 overall_activation_rate,0.6667,ratio,4/6 reader+formati attivano il beacon
