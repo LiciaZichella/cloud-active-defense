@@ -2,7 +2,7 @@ import boto3
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from config import CONFIG
 import geoip2.database
@@ -34,12 +34,12 @@ s3 = boto3.client(
 BUCKET_LOGS = CONFIG['buckets']['audit_logs']
 
 
-def registra_download(utente, ip_aziendale, nome_file):
+def registra_download(utente, ip_aziendale, nome_file, ts=None):
     print(f"\nIl dipendente '{utente}' sta scaricando il file '{nome_file}'...")
     log_evento = {
         "eventVersion": "1.0",
         "userIdentity": {"userName": utente},
-        "eventTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "eventTime": (ts or datetime.now()).strftime("%Y-%m-%d %H:%M:%S"),
         "eventName": "DownloadDocumento",
         "sourceIPAddress": ip_aziendale,
         "requestParameters": {"documento": nome_file}
@@ -88,6 +88,18 @@ if __name__ == "__main__":
     # Simulazione: un dipendente curioso accede a un honeytoken
     registra_download(utente="anna.bianchi", ip_aziendale="172.16.0.5",
                       nome_file="aws_credentials.txt")
+
+    # Simulazione behavioral: mario.rossi fa 12 download in 3 minuti (burst)
+    burst_base = datetime(2026, 1, 15, 14, 0, 0)
+    for i in range(12):
+        ts_burst = burst_base + timedelta(seconds=i * 15)
+        registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50",
+                          nome_file=f"report_Q{(i % 4) + 1}_2025.pdf", ts=ts_burst)
+
+    # Simulazione behavioral: luigi.verdi scarica alle 22:30 (off-hours)
+    ts_offhours = datetime(2026, 1, 15, 22, 30, 0)
+    registra_download(utente="luigi.verdi", ip_aziendale="10.0.0.15",
+                      nome_file="bilancio_annuale_2025.pdf", ts=ts_offhours)
 
     ip_ext = "203.0.113.88"
     lat, lon = _geo_lookup(ip_ext)
