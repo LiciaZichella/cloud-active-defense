@@ -54,12 +54,12 @@ def registra_download(utente, ip_aziendale, nome_file, ts=None):
         print(f" Errore nel salvataggio: {e}")
 
 
-def registra_esfiltrazione_esterna(ip_esterno, nome_file, lat, lon):
+def registra_esfiltrazione_esterna(ip_esterno, nome_file, lat, lon, ts=None):
     print(f"\n ALLARME: Simulazione esfiltrazione del file '{nome_file}' dall'IP {ip_esterno}...")
     log_evento = {
         "eventVersion": "1.08",
         "userIdentity": {"userName": "Sconosciuto (Esterno)"},
-        "eventTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "eventTime": (ts or datetime.now()).strftime("%Y-%m-%d %H:%M:%S"),
         "eventName": "Exfiltration",
         "sourceIPAddress": ip_esterno,
         "requestParameters": {"bucketName": BUCKET_LOGS, "documento": nome_file},
@@ -104,5 +104,15 @@ if __name__ == "__main__":
     ip_ext = "203.0.113.88"
     lat, lon = _geo_lookup(ip_ext)
     registra_esfiltrazione_esterna(ip_esterno=ip_ext, nome_file=nome_real, lat=lat, lon=lon)
+
+    # Storia demo Dwell Time: mario.rossi scarica un file reale e viene esfiltrato 75 min dopo
+    ts_dl_demo = datetime(2026, 1, 15, 9, 30, 0)
+    registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50",
+                      nome_file="Progetto_Demo_Adobe_REAL.pdf", ts=ts_dl_demo)
+    ts_esf_demo = datetime(2026, 1, 15, 10, 45, 0)
+    registra_esfiltrazione_esterna(ip_esterno="203.0.113.88",
+                                   nome_file="Progetto_Demo_Adobe_REAL.pdf",
+                                   lat=40.7128, lon=-74.0060,
+                                   ts=ts_esf_demo)
 
     print("\n Tutti i log sono stati archiviati in modo immutabile su S3. Apri la Dashboard!")
