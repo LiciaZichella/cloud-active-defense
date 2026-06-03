@@ -29,8 +29,8 @@ def firma_setup(tmp_path_factory):
     k = rsa.generate_private_key(65537, 2048, default_backend())
     subj = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, 'IT'),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, 'ACME Corp'),
-        x509.NameAttribute(NameOID.COMMON_NAME, 'ACME Corp - Cloud Active Defense'),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, 'Aurea Capital S.p.A.'),
+        x509.NameAttribute(NameOID.COMMON_NAME, 'Aurea Capital S.p.A. - Cloud Active Defense'),
     ])
     now = datetime.datetime.now(datetime.timezone.utc)
     cert = (
@@ -92,7 +92,7 @@ def test_verifica_firma_valida(firma_setup):
     )
     assert result['status'] == 'VALID', result['reason']
     assert result['signer'] is not None
-    assert 'ACME Corp' in result['signer']
+    assert 'Aurea Capital' in result['signer']
 
 
 def test_verifica_pdf_alterato(firma_setup):
@@ -113,4 +113,4 @@ def test_chain_of_trust_self_signed(firma_setup):
         firma_setup['cert_pem'],
     )
     assert result['status'] == 'VALID'
-    assert 'ACME Corp - Cloud Active Defense' in result['signer']
+    assert 'Aurea Capital S.p.A. - Cloud Active Defense' in result['signer']

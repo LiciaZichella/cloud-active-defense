@@ -10,21 +10,21 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
 KEY_DIR = Path(__file__).parent / 'data' / 'keys'
-KEY_PATH = KEY_DIR / 'acme_private.pem'
-CERT_PATH = KEY_DIR / 'acme_cert.pem'
+KEY_PATH = KEY_DIR / 'aurea_private.pem'
+CERT_PATH = KEY_DIR / 'aurea_cert.pem'
 
 _SUBJECT = [
     x509.NameAttribute(NameOID.COUNTRY_NAME, 'IT'),
-    x509.NameAttribute(NameOID.ORGANIZATION_NAME, 'ACME Corp'),
-    x509.NameAttribute(NameOID.COMMON_NAME, 'ACME Corp - Cloud Active Defense'),
+    x509.NameAttribute(NameOID.ORGANIZATION_NAME, 'Aurea Capital S.p.A.'),
+    x509.NameAttribute(NameOID.COMMON_NAME, 'Aurea Capital S.p.A. - Cloud Active Defense'),
 ]
 
 
 def _stampa_info(cert):
-    print(f"    Subject : CN=ACME Corp - Cloud Active Defense, O=ACME Corp, C=IT")
+    print(f"    Subject : CN=Aurea Capital S.p.A. - Cloud Active Defense, O=Aurea Capital S.p.A., C=IT")
     nb = cert.not_valid_before_utc
     na = cert.not_valid_after_utc
-    print(f"    Valido  : {nb.strftime('%Y-%m-%d')} → {na.strftime('%Y-%m-%d')}")
+    print(f"    Valido  : {nb.strftime('%Y-%m-%d')} -> {na.strftime('%Y-%m-%d')}")
     fp = cert.fingerprint(hashes.SHA256()).hex().upper()
     print(f"    SHA256  : {':'.join(fp[i:i+2] for i in range(0, len(fp), 2))}")
 

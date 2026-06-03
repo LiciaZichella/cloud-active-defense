@@ -11,7 +11,7 @@ FORMATO_PER_CATEGORIA = {
     'comunicazione': 'pdf',
 }
 
-_AZIENDE = ['Acme', 'Nexus', 'Sigma', 'Orion', 'Titan', 'Vega', 'Atlas', 'Apex']
+_AZIENDE = ['Meridian', 'Nexus', 'Sigma', 'Orion', 'Titan', 'Vega', 'Atlas', 'Apex']
 _PROGETTI = ['Atlas', 'Sigma', 'Nexus', 'Orion', 'Titan', 'Vega', 'Pyro', 'Helios']
 
 

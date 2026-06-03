@@ -133,8 +133,8 @@ def crea_e_carica_documento(nome_file, titolo, contenuto, prefisso_id, autore=No
         print(f"NO - Errore salvataggio beacon mapping: {e}")
 
     # Firma digitale — si applica sia agli honey che ai file reali (camouflage)
-    _key_path = Path(__file__).parent.parent / 'data' / 'keys' / 'acme_private.pem'
-    _cert_path = Path(__file__).parent.parent / 'data' / 'keys' / 'acme_cert.pem'
+    _key_path = Path(__file__).parent.parent / 'data' / 'keys' / 'aurea_private.pem'
+    _cert_path = Path(__file__).parent.parent / 'data' / 'keys' / 'aurea_cert.pem'
     if _key_path.exists() and _cert_path.exists():
         esito = pdf_signer.firma_pdf(percorso_completo, str(_cert_path), str(_key_path))
         if esito['success']:

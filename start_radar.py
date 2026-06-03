@@ -42,7 +42,7 @@ s3_client = boto3.client(
     aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region,
 )
 
-_CERT_PATH = os.path.join('data', 'keys', 'acme_cert.pem')
+_CERT_PATH = os.path.join('data', 'keys', 'aurea_cert.pem')
 
 
 def _verifica_signature(file_id):

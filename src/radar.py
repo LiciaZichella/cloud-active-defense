@@ -237,7 +237,7 @@ def lambda_handler(event, context):
             <p>Il documento che si sta tentando di consultare è protetto da policy di sicurezza avanzate.<br>
                La sessione corrente non dispone delle autorizzazioni necessarie per visualizzare i contenuti.</p>
             <p>Se ritieni che si tratti di un errore, contatta l'IT Support aziendale.</p>
-            <div class="footer">ISTITUTO DI CREDITO NAZIONALE - Portale Sicurezza v.4.2</div>
+            <div class="footer">AUREA CAPITAL S.p.A. - Portale Sicurezza v.4.2</div>
         </div>
     </body>
     </html>

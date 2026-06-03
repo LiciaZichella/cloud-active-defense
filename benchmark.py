@@ -32,8 +32,8 @@ MD_PATH = DOCS_DIR / 'EXPERIMENT_RESULTS.md'
 
 ENDPOINT = CONFIG['localstack']['endpoint']
 RADAR_URL = CONFIG['radar']['url'] + '/radar'
-KEY_PATH = Path('data') / 'keys' / 'acme_private.pem'
-CERT_PATH = Path('data') / 'keys' / 'acme_cert.pem'
+KEY_PATH = Path('data') / 'keys' / 'aurea_private.pem'
+CERT_PATH = Path('data') / 'keys' / 'aurea_cert.pem'
 
 COLOR_BLU = '#4F46E5'
 COLOR_ROSSO = '#DC2626'
