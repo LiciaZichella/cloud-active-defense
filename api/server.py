@@ -38,6 +38,12 @@ def overview():
     return JSONResponse(data_access.get_overview())
 
 
+@app.get("/api/dashboard")
+def dashboard():
+    """Dati aggregati di tutte le sezioni collegate (una sola lettura S3)."""
+    return JSONResponse(data_access.get_dashboard())
+
+
 # --- Frontend statico (solo se gia' compilato) -----------------------------
 _WEB_DIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'web', 'dist')
 if os.path.isdir(_WEB_DIST):

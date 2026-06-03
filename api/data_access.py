@@ -224,8 +224,7 @@ def _solo_ora(ts):
     return ts[:8]
 
 
-def get_overview():
-    eventi, _ = carica_eventi()
+def _overview_da(eventi):
     honey = [e for e in eventi if e['status'] == 'Honey-Hit']
     esfil = [e for e in eventi if e['status'] == 'Esfiltrazione']
     token = [e for e in eventi if e['status'] == 'Honeytoken-Leak']
@@ -295,4 +294,76 @@ def get_overview():
         'mappa': mappa,
         'severityMix': mix,
         'attackActive': len(esfil) > 0,
+    }
+
+
+def get_overview():
+    eventi, _ = carica_eventi()
+    return _overview_da(eventi)
+
+
+def _honeyfile_da(eventi):
+    """Cronologia Honey-Hit (Scenario A) con dossier HR per ogni evento."""
+    honey = [e for e in eventi if e['status'] == 'Honey-Hit']
+    alerts = []
+    for i, e in enumerate(honey):
+        hr = ottieni_dati_hr(e['utente'])
+        alerts.append({
+            'id': f'h{i + 1}',
+            'time': _solo_ora(e['ora']),
+            'severity': _severity(e),
+            'user': e['utente'],
+            'initials': _iniziali(e['utente']),
+            'variant': _variant(e['utente']),
+            'file': e['file'],
+            'ip': e['ip'],
+            'reparto': hr.get('reparto', 'Sconosciuto'),
+            'ruolo': hr.get('ruolo', 'Non assegnato'),
+            'rischio': hr.get('rischio', 'n/d'),
+            'sede': hr.get('sede', 'Remoto'),
+            'signatureValid': (e.get('signature') in (None, 'VALID')),
+        })
+    return {'alerts': alerts}
+
+
+def _esfiltrazione_da(eventi):
+    """Eventi di esfiltrazione (Scenario B) con geo, dwell e remediation."""
+    esfil = [e for e in eventi if e['status'] == 'Esfiltrazione']
+    remediati = any(e['status'] == 'Remediation' for e in eventi)
+    events = []
+    for i, e in enumerate(esfil):
+        threat = (e.get('threat') or 'normale').lower()
+        lat, lon = e.get('lat'), e.get('lon')
+        if lat and lon:
+            city = f"{lat:.2f}, {lon:.2f}"
+            country = 'Posizione esterna'
+        else:
+            city = e['ip']
+            country = 'Posizione esterna'
+        events.append({
+            'id': f'e{i + 1}',
+            'time': _solo_ora(e['ora']),
+            'city': city,
+            'country': country,
+            'threat': 'tor' if threat in ('tor', 'vpn') else 'esfil',
+            'threatLabel': threat.upper() if threat in ('tor', 'vpn') else 'ESFILTRAZIONE',
+            'file': e['file'],
+            'user': e['utente'],
+            'ip': e['ip'],
+            'dwellTime': e.get('dwell_human') or 'n/d',
+            'remediated': remediati,
+            'lat': lat,
+            'lon': lon,
+            'signatureValid': (e.get('signature') in (None, 'VALID')),
+        })
+    return {'events': events, 'attackActive': len(esfil) > 0}
+
+
+def get_dashboard():
+    """Endpoint aggregato: una sola lettura S3 alimenta tutte le sezioni gia' collegate."""
+    eventi, _ = carica_eventi()
+    return {
+        'overview': _overview_da(eventi),
+        'honeyfile': _honeyfile_da(eventi),
+        'esfiltrazione': _esfiltrazione_da(eventi),
     }

@@ -63,8 +63,8 @@ function App() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [overview, setOverview] = useState<any>(null)
-  const attackActive = overview ? !!overview.attackActive : false
+  const [dash, setDash] = useState<any>(null)
+  const attackActive = dash?.esfiltrazione ? !!dash.esfiltrazione.attackActive : false
   const [pdfPreview, setPdfPreview] = useState<{ type: 'forense' | 'esfil' | 'behavioral' | 'behavioralUser' | 'honeytoken' | 'nis2' | 'bundle' | 'doc'; data: any } | null>(null)
   const [tokenModal, setTokenModal] = useState(false)
 
@@ -81,7 +81,7 @@ function App() {
 
   // Carica i dati reali dal backend FastAPI (polling ogni 5s)
   useEffect(() => {
-    const load = () => fetch('/api/overview').then(r => r.json()).then(setOverview).catch(() => {})
+    const load = () => fetch('/api/dashboard').then(r => r.json()).then(setDash).catch(() => {})
     load()
     const id = setInterval(load, 5000)
     return () => clearInterval(id)
@@ -105,9 +105,9 @@ function App() {
       />
       <Sidebar current={section} onSelect={setSection} />
       <main className="main">
-        {section === 'overview' && <OverviewSection onNav={setSection} attackActive={attackActive} data={overview} />}
-        {section === 'honeyfile' && <HoneyfileSection showToast={showToast} onPreviewPdf={(data) => setPdfPreview({ type: 'forense', data })} />}
-        {section === 'esfiltrazione' && <EsfiltrazioneSection showToast={showToast} attackActive={attackActive} onPreviewPdf={(data) => setPdfPreview({ type: 'esfil', data })} />}
+        {section === 'overview' && <OverviewSection onNav={setSection} attackActive={attackActive} data={dash?.overview} />}
+        {section === 'honeyfile' && <HoneyfileSection showToast={showToast} data={dash?.honeyfile} onPreviewPdf={(data) => setPdfPreview({ type: 'forense', data })} />}
+        {section === 'esfiltrazione' && <EsfiltrazioneSection showToast={showToast} attackActive={attackActive} data={dash?.esfiltrazione} onPreviewPdf={(data) => setPdfPreview({ type: 'esfil', data })} />}
         {section === 'behavioral' && <BehavioralSection showToast={showToast} onPreviewPdf={() => setPdfPreview({ type: 'behavioral', data: {} })} onPreviewUser={(user) => setPdfPreview({ type: 'behavioralUser', data: user })} />}
         {section === 'honeytoken' && <HoneytokenSection showToast={showToast} onPreviewPdf={(data) => setPdfPreview({ type: 'honeytoken', data })} onGenerateToken={() => setTokenModal(true)} />}
         {section === 'documenti' && <DocumentiSection onPreview={(doc) => setPdfPreview({ type: 'doc', data: doc })} />}
@@ -470,20 +470,24 @@ function OverviewSection({ onNav, attackActive, data }: { onNav: (s: Section) =>
   )
 }
 
-function HoneyfileSection({ showToast, onPreviewPdf }: { showToast: (m: string) => void; onPreviewPdf: (data: any) => void }) {
-  const [selectedId, setSelectedId] = useState(honeyAlerts[0].id)
-  const selected = honeyAlerts.find(h => h.id === selectedId)!
+function HoneyfileSection({ showToast, data, onPreviewPdf }: { showToast: (m: string) => void; data: any; onPreviewPdf: (data: any) => void }) {
+  const alerts: any[] = data?.alerts || []
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = alerts.find(h => h.id === selectedId) || alerts[0] || null
   return (
     <>
-      <PageHeader title="Honeyfile · Trappole attive" breadcrumb="3 violazioni rilevate · Scenario A (Zero Trust)" action={<button className="btn primary" onClick={() => showToast('Funzione disponibile nel codice Streamlit reale')}>+ Nuovo Honeyfile</button>} />
+      <PageHeader title="Honeyfile · Trappole attive" breadcrumb={`${alerts.length} violazioni rilevate · Scenario A (Zero Trust)`} action={<button className="btn primary" onClick={() => showToast('Per generare un nuovo Honeyfile esegui generator.py')}>+ Nuovo Honeyfile</button>} />
       <div className="info-banner" style={{ marginBottom: 16 }}>
         💡 <strong>Scenario A — Zero Trust</strong>: un Honeyfile è un documento esca senza valore reale. L'allarme scatta nel momento del download — nessuno dovrebbe accedervi, quindi qualsiasi accesso è automaticamente sospetto. Permette di identificare gli insider durante la fase di reconnaissance, prima dell'esfiltrazione.
       </div>
       <div className="content-grid-2">
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Cronologia Honey-Hit</div><div className="panel-sub">Clicca una riga per aprire il dossier</div></div>
-          {honeyAlerts.map(h => (
-            <div key={h.id} className={`alert-row ${selectedId === h.id ? 'selected' : ''}`} onClick={() => setSelectedId(h.id)}>
+          {alerts.length === 0 && (
+            <div className="info-banner">{data ? '✅ Nessun Honey-Hit rilevato — nessuno ha toccato i file esca.' : '⏳ Caricamento dati dal backend…'}</div>
+          )}
+          {alerts.map(h => (
+            <div key={h.id} className={`alert-row ${selected && selected.id === h.id ? 'selected' : ''}`} onClick={() => setSelectedId(h.id)}>
               <div className="alert-time mono">{h.time}</div>
               <div><span className={`severity-badge ${h.severity}`}>HONEY-HIT</span></div>
               <div className="alert-user"><MiniAvatar initials={h.initials} variant={h.variant} />{h.user}</div>
@@ -493,6 +497,7 @@ function HoneyfileSection({ showToast, onPreviewPdf }: { showToast: (m: string) 
             </div>
           ))}
         </div>
+        {selected && (
         <div className="dossier">
           <div className="dossier-hero">
             <div className="dossier-hero-label">DOSSIER FORENSE</div>
@@ -501,10 +506,10 @@ function HoneyfileSection({ showToast, onPreviewPdf }: { showToast: (m: string) 
           </div>
           <div className="dossier-body">
             <div className="dossier-row"><span className="dossier-row-label">File toccato</span><span className="dossier-row-value mono">{selected.file}</span></div>
-            <div className="dossier-row"><span className="dossier-row-label">Timestamp</span><span className="dossier-row-value">{selected.time} 14/05/2026</span></div>
+            <div className="dossier-row"><span className="dossier-row-label">Orario</span><span className="dossier-row-value">{selected.time}</span></div>
             <div className="dossier-row"><span className="dossier-row-label">IP sorgente</span><span className="dossier-row-value mono">{selected.ip}</span></div>
             <div className="dossier-row"><span className="dossier-row-label">Sede</span><span className="dossier-row-value">{selected.sede}</span></div>
-            <div className="dossier-row"><span className="dossier-row-label">Firma documento</span><span className="dossier-row-value" style={{color:'var(--ok)'}}>✓ VALIDA</span></div>
+            <div className="dossier-row"><span className="dossier-row-label">Firma documento</span><span className="dossier-row-value" style={{color: selected.signatureValid ? 'var(--ok)' : 'var(--critical)'}}>{selected.signatureValid ? '✓ VALIDA' : '✗ NON VALIDA'}</span></div>
             <div className="export-row">
               <button className="btn" onClick={() => onPreviewPdf(selected)}>{Icon.eye} Anteprima dossier</button>
               <button className="btn" onClick={() => showToast(`📄 Dossier ${selected.user}.pdf scaricato`)}>{Icon.download} Esporta PDF</button>
@@ -512,17 +517,19 @@ function HoneyfileSection({ showToast, onPreviewPdf }: { showToast: (m: string) 
             </div>
           </div>
         </div>
+        )}
       </div>
     </>
   )
 }
 
-function EsfiltrazioneSection({ showToast, attackActive, onPreviewPdf }: { showToast: (m: string) => void; attackActive: boolean; onPreviewPdf: (data: any) => void }) {
-  const [selectedId, setSelectedId] = useState(esfilEvents[0].id)
-  const selected = esfilEvents.find(e => e.id === selectedId)!
+function EsfiltrazioneSection({ showToast, attackActive, data, onPreviewPdf }: { showToast: (m: string) => void; attackActive: boolean; data: any; onPreviewPdf: (data: any) => void }) {
+  const events: any[] = data?.events || []
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = events.find(e => e.id === selectedId) || events[0] || null
   return (
     <>
-      <PageHeader title="Esfiltrazione DLP" breadcrumb="Scenario B · 1 esfiltrazione critica via TOR · Auto-Remediation attiva" action={<LivePill attack={attackActive} />} />
+      <PageHeader title="Esfiltrazione DLP" breadcrumb={`Scenario B · ${events.length} esfiltrazione/i rilevata/e · Auto-Remediation attiva`} action={<LivePill attack={attackActive} />} />
       <div className="info-banner" style={{ marginBottom: 16 }}>
         💡 <strong>Scenario B — File reale con Web Beacon</strong>: documenti aziendali autentici contengono un beacon crittografico nascosto. Quando il file viene aperto fuori dalla rete aziendale, il beacon "chiama casa" e il sistema classifica l'IP sorgente (normale, VPN, Tor). Se l'apertura avviene da rete esterna, scatta l'Auto-Remediation che revoca automaticamente i permessi IAM del downloader.
       </div>
@@ -530,8 +537,11 @@ function EsfiltrazioneSection({ showToast, attackActive, onPreviewPdf }: { showT
       <div className="content-grid-2">
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Eventi di esfiltrazione</div><div className="panel-sub">Clicca per dettaglio</div></div>
-          {esfilEvents.map(e => (
-            <div key={e.id} className={`alert-row ${selectedId === e.id ? 'selected' : ''}`} onClick={() => setSelectedId(e.id)}>
+          {events.length === 0 && (
+            <div className="info-banner">{data ? '✅ Nessuna esfiltrazione rilevata — documenti al sicuro.' : '⏳ Caricamento dati dal backend…'}</div>
+          )}
+          {events.map(e => (
+            <div key={e.id} className={`alert-row ${selected && selected.id === e.id ? 'selected' : ''}`} onClick={() => setSelectedId(e.id)}>
               <div className="alert-time mono">{e.time}</div>
               <div><span className={`severity-badge ${e.threat}`}>{e.threatLabel}</span></div>
               <div className="alert-user">📍 {e.city}</div>
@@ -541,6 +551,7 @@ function EsfiltrazioneSection({ showToast, attackActive, onPreviewPdf }: { showT
             </div>
           ))}
         </div>
+        {selected && (
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Dettaglio incidente</div></div>
           <div className="dossier-row"><span className="dossier-row-label">Beacon ID</span><span className="dossier-row-value mono">{selected.file}</span></div>
@@ -555,6 +566,7 @@ function EsfiltrazioneSection({ showToast, attackActive, onPreviewPdf }: { showT
             <button className="btn" onClick={() => showToast(`📄 Report incidente ${selected.file}.pdf scaricato`)}>{Icon.download} Stampa PDF</button>
           </div>
         </div>
+        )}
       </div>
       <div className="panel" style={{marginTop:16}}>
         <div className="panel-header"><div className="panel-title">Timeline attacco</div><div className="panel-sub">Sequenza eventi correlati</div></div>
