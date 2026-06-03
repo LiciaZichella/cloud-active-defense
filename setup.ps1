@@ -31,7 +31,13 @@ Write-Host "[5/5] Genero Honeyfile e File Reale..."
 python src/generator.py
 
 Write-Host ""
+Write-Host "Popolo dati dimostrativi (download, honeytoken, esfiltrazione)..."
+python simula_download.py
+Write-Host "Eseguo l'analisi comportamentale sui log..."
+python behavioral_scan.py
+
+Write-Host ""
 Write-Host "Stack pronto!" -ForegroundColor Green
-Write-Host "  Apri src/index.html nel browser per il portale esca."
-Write-Host "  Avvia il Radar:      python start_radar.py"
-Write-Host "  Avvia la Dashboard:  streamlit run dashboard.py"
+Write-Host "  Portale esca:    apri src/index.html nel browser"
+Write-Host "  Radar (beacon):  python start_radar.py"
+Write-Host "  Dashboard SOC:   python -m uvicorn api.server:app --port 8000   ->   apri http://127.0.0.1:8000"
