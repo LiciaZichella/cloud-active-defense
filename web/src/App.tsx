@@ -1,4 +1,6 @@
-import { useState, useEffect, type JSX } from 'react'
+import { useState, useEffect, useRef, type JSX } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import './App.css'
 
 type Section = 'overview' | 'honeyfile' | 'esfiltrazione' | 'behavioral' | 'honeytoken' | 'report' | 'documenti' | 'sistema'
@@ -365,28 +367,44 @@ function LivePill({ attack }: { attack: boolean }) {
 
 function MiniAvatar({ initials, variant }: { initials: string; variant?: 1 | 2 | 3 | 4 }) { return <div className={`mini-avatar v${variant || 1}`}>{initials}</div> }
 
-function MiniMap({ height = 200 }: { height?: number }) {
-  return (
-    <div className="mini-map" style={{ height }}>
-      <div className="map-line l1"></div><div className="map-line l2"></div>
-      <div className="map-marker hq"></div><div className="map-marker critical"></div><div className="map-marker tor"></div>
-    </div>
-  )
+const MAP_COLORS: Record<string, string> = { hq: '#34d399', esfil: '#fb7185', tor: '#c084fc' }
+
+function LeafletMap({ points, height = 200 }: { points: any[]; height?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<any>(null)
+  useEffect(() => {
+    if (!ref.current) return
+    if (!mapRef.current) {
+      mapRef.current = L.map(ref.current, { zoomControl: true, attributionControl: false }).setView([46, 9], 4)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapRef.current)
+    }
+    const map = mapRef.current
+    map.eachLayer((layer: any) => { if (layer instanceof L.CircleMarker || layer instanceof L.Polyline) map.removeLayer(layer) })
+    const pts = (points || []).filter((p: any) => typeof p.lat === 'number' && typeof p.lon === 'number')
+    let hq: any = null
+    const others: any[] = []
+    pts.forEach((p: any) => {
+      const col = MAP_COLORS[p.tipo] || '#60a5fa'
+      const m = L.circleMarker([p.lat, p.lon], { radius: p.tipo === 'hq' ? 8 : 7, color: col, fillColor: col, fillOpacity: 0.85, weight: 2 }).addTo(map)
+      if (p.label) m.bindPopup(p.label)
+      if (p.tipo === 'hq') { hq = [p.lat, p.lon] } else { others.push([p.lat, p.lon]) }
+    })
+    if (hq) others.forEach((ll) => L.polyline([hq, ll], { color: '#fb7185', weight: 1.5, dashArray: '5 6', opacity: 0.6 }).addTo(map))
+    const all = pts.map((p: any) => [p.lat, p.lon])
+    if (all.length === 1) map.setView(all[0] as any, 5)
+    else if (all.length > 1) map.fitBounds(all as any, { padding: [30, 30], maxZoom: 6 })
+    setTimeout(() => map.invalidateSize(), 120)
+  }, [points])
+  useEffect(() => () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null } }, [])
+  return <div ref={ref} style={{ height, borderRadius: 12, overflow: 'hidden', zIndex: 0 }} />
 }
 
-function FullMap() {
-  return (
-    <div className="full-map">
-      <div className="full-marker m1"></div><div className="full-marker m2"></div><div className="full-marker m3"></div><div className="full-marker m4"></div><div className="full-marker m5"></div>
-      <div className="map-overlay">
-        <div className="map-legend-floating">
-          <div className="map-legend-item"><span className="map-legend-dot" style={{background:'var(--ok)'}}></span>HQ Roma</div>
-          <div className="map-legend-item"><span className="map-legend-dot" style={{background:'var(--critical)'}}></span>Esfiltrazioni</div>
-          <div className="map-legend-item"><span className="map-legend-dot" style={{background:'var(--tor)'}}></span>Tor/VPN</div>
-        </div>
-      </div>
-    </div>
-  )
+function MiniMap({ points, height = 200 }: { points?: any[]; height?: number }) {
+  return <LeafletMap points={points || []} height={height} />
+}
+
+function FullMap({ points }: { points?: any[] }) {
+  return <div className="full-map" style={{ padding: 0 }}><LeafletMap points={points || []} height={420} /></div>
 }
 
 function Donut() {
@@ -453,7 +471,7 @@ function OverviewSection({ onNav, attackActive, data }: { onNav: (s: Section) =>
         <div className="right-stack">
           <div className="panel">
             <div className="panel-header"><div className="panel-title">Mappa Minacce</div><div className="panel-action" onClick={() => onNav('esfiltrazione')}>Espandi →</div></div>
-            <MiniMap />
+            <MiniMap points={ov.mappa} />
             <div className="map-legend">
               <div className="map-legend-item"><span className="map-legend-dot" style={{background:'var(--ok)'}}></span>HQ</div>
               <div className="map-legend-item"><span className="map-legend-dot" style={{background:'var(--critical)'}}></span>Esfiltrazione</div>
@@ -533,7 +551,7 @@ function EsfiltrazioneSection({ showToast, attackActive, data, onPreviewPdf }: {
       <div className="info-banner" style={{ marginBottom: 16 }}>
         💡 <strong>Scenario B — File reale con Web Beacon</strong>: documenti aziendali autentici contengono un beacon crittografico nascosto. Quando il file viene aperto fuori dalla rete aziendale, il beacon "chiama casa" e il sistema classifica l'IP sorgente (normale, VPN, Tor). Se l'apertura avviene da rete esterna, scatta l'Auto-Remediation che revoca automaticamente i permessi IAM del downloader.
       </div>
-      <FullMap />
+      <FullMap points={data?.mappa} />
       <div className="content-grid-2">
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Eventi di esfiltrazione</div><div className="panel-sub">Clicca per dettaglio</div></div>

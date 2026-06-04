@@ -357,7 +357,16 @@ def _esfiltrazione_da(eventi):
             'lon': lon,
             'signatureValid': (e.get('signature') in (None, 'VALID')),
         })
-    return {'events': events, 'attackActive': len(esfil) > 0}
+
+    hq_lat = CONFIG.get('company', {}).get('hq_lat', 41.9028)
+    hq_lon = CONFIG.get('company', {}).get('hq_lon', 12.4964)
+    mappa = [{'lat': hq_lat, 'lon': hq_lon, 'tipo': 'hq', 'label': 'HQ Aurea Capital'}]
+    for e in esfil:
+        if e.get('lat') and e.get('lon'):
+            tipo = 'tor' if (e.get('threat') or '').lower() in ('tor', 'vpn') else 'esfil'
+            mappa.append({'lat': e['lat'], 'lon': e['lon'], 'tipo': tipo,
+                          'label': f"{e['utente']} · {e['ip']}"})
+    return {'events': events, 'attackActive': len(esfil) > 0, 'mappa': mappa}
 
 
 _RULES_CANONICHE = ['download_burst', 'off_hours', 'mass_access', 'recon_pattern']
