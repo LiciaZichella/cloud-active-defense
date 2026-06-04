@@ -1677,9 +1677,9 @@ function PdfNis2() {
       <div className="pdf-page pdf-nis2-cover">
         <div className="pdf-nis2-corp-bar">
           <div className="pdf-nis2-logo">
-            <div className="pdf-nis2-logo-mark">ICN</div>
+            <div className="pdf-nis2-logo-mark">AC</div>
             <div>
-              <div className="pdf-nis2-logo-name">ISTITUTO DI CREDITO NAZIONALE</div>
+              <div className="pdf-nis2-logo-name">AUREA CAPITAL</div>
               <div className="pdf-nis2-logo-sub">Sede legale · Via del Corso 412 · 00186 Roma</div>
             </div>
           </div>
@@ -1711,7 +1711,7 @@ function PdfNis2() {
             </div>
             <div className="pdf-nis2-cover-item">
               <div className="pdf-nis2-cover-label">Codice rapporto</div>
-              <div className="pdf-nis2-cover-value mono">NIS2-2026-05-ICN-0017</div>
+              <div className="pdf-nis2-cover-value mono">NIS2-2026-05-AC-0017</div>
             </div>
             <div className="pdf-nis2-cover-item">
               <div className="pdf-nis2-cover-label">Stato</div>
@@ -1733,13 +1733,13 @@ function PdfNis2() {
 
         <div className="pdf-page-footer">
           <span>Pagina 1 di 3 — Copertina</span>
-          <span>Documento ufficiale · ICN · NIS2-2026-05</span>
+          <span>Documento ufficiale · AC · NIS2-2026-05</span>
         </div>
       </div>
 
       {/* PAGINA 2 — SINTESI + KPI + GRAFICI */}
       <div className="pdf-page pdf-nis2">
-        <div className="pdf-nis2-runner">ICN · Rapporto NIS2 Maggio 2026 · Pag. 2/3</div>
+        <div className="pdf-nis2-runner">AC · Rapporto NIS2 Maggio 2026 · Pag. 2/3</div>
 
         <div className="pdf-section">
           <div className="pdf-nis2-section-num">§ 1</div>
@@ -1804,13 +1804,13 @@ function PdfNis2() {
 
         <div className="pdf-page-footer">
           <span>Pagina 2 di 3 — Sintesi e indicatori</span>
-          <span>NIS2-2026-05-ICN-0017</span>
+          <span>NIS2-2026-05-AC-0017</span>
         </div>
       </div>
 
       {/* PAGINA 3 — MAPPATURA CONFORMITÀ + MITRE + FIRMA */}
       <div className="pdf-page pdf-nis2">
-        <div className="pdf-nis2-runner">ICN · Rapporto NIS2 Maggio 2026 · Pag. 3/3</div>
+        <div className="pdf-nis2-runner">AC · Rapporto NIS2 Maggio 2026 · Pag. 3/3</div>
 
         <div className="pdf-section">
           <div className="pdf-nis2-section-num">§ 5</div>
@@ -1870,7 +1870,7 @@ function PdfNis2() {
 
         <div className="pdf-page-footer">
           <span>Pagina 3 di 3 — Conformità e firma</span>
-          <span>Documento ufficiale · ICN · NIS2-2026-05</span>
+          <span>Documento ufficiale · AC · NIS2-2026-05</span>
         </div>
       </div>
     </>
@@ -2405,9 +2405,9 @@ aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 region = us-east-1
 output = json
 
-# Account: prod-finance-bank-icn
+# Account: prod-finance-bank-ac
 # Last rotated: 2026-04-15
-# Owner: devops@icn.it
+# Owner: devops@aureacapital.it
 # Backup credentials — keep secure
 
 [prod-restricted]
@@ -2422,10 +2422,10 @@ aws_secret_access_key = readonly-secret-for-audit-team-only-x9y8z7
 region = eu-central-1`},
     't2': { lang: 'env', text: `# .env.production
 # DO NOT COMMIT TO REPOSITORY
-# Last updated: 2026-04-22 by devops@icn.it
+# Last updated: 2026-04-22 by devops@aureacapital.it
 
 # Database
-DATABASE_URL=postgres://admin:Pr0d_DB_2026!Strong@db-prod-icn.internal:5432/banking_core
+DATABASE_URL=postgres://admin:Pr0d_DB_2026!Strong@db-prod-ac.internal:5432/banking_core
 DATABASE_POOL_MAX=50
 DATABASE_TIMEOUT=30
 
@@ -2453,20 +2453,20 @@ HSM_PIN=4729-5816-3094-7521`},
 # Last rotation: 2026-04-30
 
 database:
-  host: db-prod-icn.internal
+  host: db-prod-ac.internal
   port: 5432
   username: db_admin_prod
   password: pR0d_d4t4b4s3_st70ng_!2026
   ssl_mode: require
 
 vault:
-  endpoint: https://vault-prod.icn.local:8200
+  endpoint: https://vault-prod.aureacapital.local:8200
   token: hvs.esca_honeytoken_non_reale
   approle_id: 5a8b7c6d-3e2f-1a4b-8c9d-5e6f7a8b9c0d
   approle_secret: 4f3e2d1c-9b8a-7c6d-5e4f-3a2b1c0d9e8f
 
 kubernetes:
-  cluster: icn-prod-eu-west
+  cluster: ac-prod-eu-west
   cluster_token: eyJhbGciOiJSUzI1NiIsImtpZCI6IkU0VVZUVjFUVjFTVlpYUjZSV1JGVjFFV1ZGUlhWMU5XVVZSVlRsUlZTRGM2T1RZek1qWXpOVFkwT0RVMU16VTFOakV4TXpReE1qVTFOall6T0RZeE5UWXhNeTAwTW1RM01EZGtNVE0xWlRJM01EYzRZelF6TmpkbU5UbGtOREkz
   namespace: banking-core
   service_account: prod-deployer
@@ -2477,11 +2477,11 @@ api_gateway:
   rate_limit_token: rlt_prod_8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e
 
 internal_certs:
-  ca_root: /etc/ssl/icn-ca-root.pem
+  ca_root: /etc/ssl/ac-ca-root.pem
   ca_passphrase: "ic3n_p4ssphr4s3_pr0d_v8_keep_rotating"`},
     't4': { lang: 'pem', text: `# id_rsa_backup
 # Backup SSH key — devops production access
-# Owner: devops@icn.it
+# Owner: devops@aureacapital.it
 # Comment: id_rsa - prod-jumphost-backup
 
 ----- CHIAVE RSA DI ESEMPIO -- HONEYTOKEN, NON REALE -----
@@ -2510,9 +2510,9 @@ function DocBilancioRiservato() {
         <div className="doc-pdf-watermark">RISERVATO</div>
         <div className="doc-bank-header">
           <div className="doc-bank-logo">
-            <div className="doc-bank-mark">ICN</div>
+            <div className="doc-bank-mark">AC</div>
             <div>
-              <div className="doc-bank-name">ISTITUTO DI CREDITO NAZIONALE S.p.A.</div>
+              <div className="doc-bank-name">AUREA CAPITAL S.p.A.</div>
               <div className="doc-bank-sub">Sede Legale: Via del Corso 412, 00186 Roma · C.F./P.IVA: 12345670019</div>
             </div>
           </div>
@@ -2551,7 +2551,7 @@ function DocBilancioRiservato() {
 
         <div className="pdf-page-footer doc-footer">
           <span>Pagina 1 di 2 · Bilancio Q4 2025 · RISERVATO</span>
-          <span>ICN S.p.A. · ad uso esclusivo Direzione Generale</span>
+          <span>Aurea Capital S.p.A. · ad uso esclusivo Direzione Generale</span>
         </div>
       </div>
 
@@ -2592,7 +2592,7 @@ function DocBilancioRiservato() {
           </div>
         </div>
 
-        <div className="doc-disclaimer">Il presente documento contiene informazioni riservate. La diffusione non autorizzata costituisce violazione del Regolamento Interno ICN art. 14 e del D.Lgs. 196/2003 sul trattamento dei dati personali. Classificazione: <strong>RISERVATO LIVELLO 3</strong>.</div>
+        <div className="doc-disclaimer">Il presente documento contiene informazioni riservate. La diffusione non autorizzata costituisce violazione del Regolamento Interno AC art. 14 e del D.Lgs. 196/2003 sul trattamento dei dati personali. Classificazione: <strong>RISERVATO LIVELLO 3</strong>.</div>
 
         <div className="pdf-page-footer doc-footer">
           <span>Pagina 2 di 2 · Bilancio Q4 2025 · RISERVATO</span>
@@ -2646,7 +2646,7 @@ function DocProgettoAtlas() {
 
         <div className="pdf-page-footer doc-footer">
           <span>Pagina 1 di 2 · PRJ-ATLAS-2026-001</span>
-          <span>ICN S.p.A. · CONFIDENZIALE</span>
+          <span>Aurea Capital S.p.A. · CONFIDENZIALE</span>
         </div>
       </div>
 
@@ -2718,7 +2718,7 @@ function DocContrattoApex() {
 
           <div className="docx-section">
             <div className="docx-h">TRA</div>
-            <p><strong>ISTITUTO DI CREDITO NAZIONALE S.p.A.</strong>, con sede legale in Roma, Via del Corso 412 — 00186, P. IVA 12345670019, in persona del legale rappresentante <em>pro tempore</em> Dott. Antonio Pacillo, di seguito denominata "<strong>ICN</strong>" o "<strong>Committente</strong>",</p>
+            <p><strong>AUREA CAPITAL S.p.A.</strong>, con sede legale in Roma, Via del Corso 412 — 00186, P. IVA 12345670019, in persona del legale rappresentante <em>pro tempore</em> Dott. Antonio Pacillo, di seguito denominata "<strong>AC</strong>" o "<strong>Committente</strong>",</p>
 
             <div className="docx-h">E</div>
             <p><strong>APEX SOLUTIONS S.r.l.</strong>, con sede legale in Milano, Via della Spiga 32 — 20121, P. IVA 09876543210, in persona del legale rappresentante <em>pro tempore</em> Ing. Roberto Apicella, di seguito denominata "<strong>APEX</strong>" o "<strong>Fornitore</strong>",</p>
@@ -2729,7 +2729,7 @@ function DocContrattoApex() {
           <div className="docx-section">
             <div className="docx-h">PREMESSO CHE</div>
             <ul className="docx-bullets">
-              <li>ICN intende avvalersi di servizi specialistici di system integration per il proprio Progetto Atlas (Rif. PRJ-ATLAS-2026-001);</li>
+              <li>AC intende avvalersi di servizi specialistici di system integration per il proprio Progetto Atlas (Rif. PRJ-ATLAS-2026-001);</li>
               <li>APEX dichiara di possedere le competenze e le certificazioni richieste (AWS Premier Partner, ISO 27001, ISO 9001);</li>
               <li>Le Parti hanno definito termini e condizioni della fornitura come da art. seguenti.</li>
             </ul>
@@ -2759,7 +2759,7 @@ function DocContrattoApex() {
 
           <div className="pdf-page-footer doc-footer">
             <span>Pagina 1 di 2 · CTR-APX-2026-04217</span>
-            <span>ICN S.p.A. — APEX SOLUTIONS S.r.l.</span>
+            <span>Aurea Capital S.p.A. — APEX SOLUTIONS S.r.l.</span>
           </div>
         </div>
       </div>
@@ -2795,12 +2795,12 @@ function DocContrattoApex() {
 
           <div className="docx-sig">
             <div className="docx-sig-col">
-              <div className="docx-sig-label">Per ICN S.p.A.</div>
+              <div className="docx-sig-label">Per Aurea Capital S.p.A.</div>
               <div className="docx-sig-stamp">
                 <div className="docx-sig-line"></div>
                 <div className="docx-sig-name">Dott. Antonio Pacillo</div>
                 <div className="docx-sig-role">Amministratore Delegato</div>
-                <div className="docx-stamp">ICN S.p.A.<br/>TIMBRO</div>
+                <div className="docx-stamp">Aurea Capital S.p.A.<br/>TIMBRO</div>
               </div>
             </div>
             <div className="docx-sig-col">
@@ -2847,7 +2847,7 @@ function DocValutazionePersonale() {
         <div className="hr-section-title">Dati anagrafici dipendente</div>
         <table className="hr-data-table">
           <tbody>
-            <tr><td>Nome e cognome</td><td><strong>Luigi Verdi</strong></td><td>Matricola</td><td><strong>ICN-04217</strong></td></tr>
+            <tr><td>Nome e cognome</td><td><strong>Luigi Verdi</strong></td><td>Matricola</td><td><strong>AC-04217</strong></td></tr>
             <tr><td>Reparto</td><td>Amministrazione</td><td>Sede</td><td>Centrale · Piano 2</td></tr>
             <tr><td>Ruolo</td><td>Contabile Senior</td><td>Anzianità aziendale</td><td>7 anni</td></tr>
             <tr><td>Responsabile</td><td>Dott.ssa Anna Russo</td><td>RAL lorda</td><td>€ 42.500</td></tr>
@@ -2935,7 +2935,7 @@ function DocBilancioQ1() {
             </tr>
           </thead>
           <tbody>
-            <tr><td className="xlsx-row-h">1</td><td colSpan={5} className="xlsx-title-cell"><strong>ISTITUTO DI CREDITO NAZIONALE — Bilancio Q1 2026 (in € migliaia)</strong></td></tr>
+            <tr><td className="xlsx-row-h">1</td><td colSpan={5} className="xlsx-title-cell"><strong>AUREA CAPITAL — Bilancio Q1 2026 (in € migliaia)</strong></td></tr>
             <tr><td className="xlsx-row-h">2</td><td colSpan={5} className="xlsx-subtitle-cell">Conto Economico · gennaio – marzo 2026</td></tr>
             <tr><td className="xlsx-row-h">3</td><td className="xlsx-header-cell"><strong>Voce</strong></td><td className="xlsx-header-cell"><strong>Q1 2026</strong></td><td className="xlsx-header-cell"><strong>Q4 2025</strong></td><td className="xlsx-header-cell"><strong>Δ assoluto</strong></td><td className="xlsx-header-cell"><strong>Δ %</strong></td></tr>
             <tr><td className="xlsx-row-h">4</td><td colSpan={5} className="xlsx-section-cell">RICAVI</td></tr>
@@ -3000,7 +3000,7 @@ function DocStipendiDirigenza() {
             </tr>
           </thead>
           <tbody>
-            <tr><td className="xlsx-row-h">1</td><td colSpan={6} className="xlsx-title-cell"><strong>ICN — Compensi Dirigenza · Anno 2026</strong></td></tr>
+            <tr><td className="xlsx-row-h">1</td><td colSpan={6} className="xlsx-title-cell"><strong>AC — Compensi Dirigenza · Anno 2026</strong></td></tr>
             <tr><td className="xlsx-row-h">2</td><td colSpan={6} className="xlsx-subtitle-cell">Documento riservato · ad uso esclusivo HR e CdA</td></tr>
             <tr><td className="xlsx-row-h">3</td><td className="xlsx-header-cell">Cognome Nome</td><td className="xlsx-header-cell">Ruolo</td><td className="xlsx-header-cell">RAL lorda</td><td className="xlsx-header-cell">MBO target</td><td className="xlsx-header-cell">Benefit (€/anno)</td><td className="xlsx-header-cell">Totale</td></tr>
             <tr><td className="xlsx-row-h">4</td><td>Pacillo Antonio</td><td>Amministratore Delegato</td><td className="num">680.000</td><td className="num">340.000</td><td className="num">85.000</td><td className="num"><strong>1.105.000</strong></td></tr>
