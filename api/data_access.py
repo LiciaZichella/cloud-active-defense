@@ -360,6 +360,59 @@ def _esfiltrazione_da(eventi):
     return {'events': events, 'attackActive': len(esfil) > 0}
 
 
+_RULES_CANONICHE = ['download_burst', 'off_hours', 'mass_access', 'recon_pattern']
+_RULE_SEV = {'download_burst': 'critical', 'off_hours': 'medium', 'mass_access': 'high', 'recon_pattern': 'tor'}
+_RULE_DESC = {
+    'download_burst': 'Stesso utente oltre soglia di download in 5 min',
+    'off_hours': 'Download fuori orario lavorativo (08-19)',
+    'mass_access': 'Accesso massivo dello stesso reparto in 30 min',
+    'recon_pattern': 'Honey-touch entro pochi minuti da un file reale',
+}
+
+
+def _behavioral_da(eventi):
+    """Analisi comportamentale: rule card, ranking dipendenti, cronologia alert."""
+    behav = [e for e in eventi if e['status'] == 'Behavioral-Alert']
+
+    conteggio = {}
+    for e in behav:
+        conteggio[e['file']] = conteggio.get(e['file'], 0) + 1
+
+    rules = []
+    for r in _RULES_CANONICHE:
+        c = conteggio.get(r, 0)
+        rules.append({'name': r, 'desc': _RULE_DESC.get(r, ''), 'count': c,
+                      'fired': c > 0, 'severity': _RULE_SEV.get(r, 'info')})
+
+    per_utente = {}
+    for e in behav:
+        u = e['utente']
+        d = per_utente.setdefault(u, {'count': 0, 'rules': {}})
+        d['count'] += 1
+        d['rules'][e['file']] = d['rules'].get(e['file'], 0) + 1
+    ranking = []
+    for u, info in sorted(per_utente.items(), key=lambda x: -x[1]['count']):
+        hr = ottieni_dati_hr(u)
+        rule_prevalente = max(info['rules'], key=info['rules'].get)
+        ranking.append({
+            'user': u, 'initials': _iniziali(u), 'variant': _variant(u),
+            'reparto': hr.get('reparto', 'Sconosciuto'), 'ruolo': hr.get('ruolo', 'n/d'),
+            'sede': hr.get('sede', 'Remoto'), 'rule': rule_prevalente,
+            'score': info['count'], 'severity': _RULE_SEV.get(rule_prevalente, 'info'),
+        })
+
+    alerts = []
+    for e in behav:
+        rule = e['file']
+        alerts.append({
+            'time': _solo_ora(e['ora']), 'rule': rule, 'severity': _RULE_SEV.get(rule, 'info'),
+            'user': e['utente'], 'initials': _iniziali(e['utente']), 'variant': _variant(e['utente']),
+            'evidenza': _RULE_DESC.get(rule, ''), 'ip': e['ip'],
+        })
+
+    return {'rules': rules, 'ranking': ranking, 'alerts': alerts}
+
+
 _dash_cache = {'ts': 0.0, 'data': None}
 
 
@@ -374,6 +427,7 @@ def get_dashboard():
         'overview': _overview_da(eventi),
         'honeyfile': _honeyfile_da(eventi),
         'esfiltrazione': _esfiltrazione_da(eventi),
+        'behavioral': _behavioral_da(eventi),
     }
     _dash_cache['data'] = data
     _dash_cache['ts'] = now

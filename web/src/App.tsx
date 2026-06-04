@@ -108,7 +108,7 @@ function App() {
         {section === 'overview' && <OverviewSection onNav={setSection} attackActive={attackActive} data={dash?.overview} />}
         {section === 'honeyfile' && <HoneyfileSection showToast={showToast} data={dash?.honeyfile} onPreviewPdf={(data) => setPdfPreview({ type: 'forense', data })} />}
         {section === 'esfiltrazione' && <EsfiltrazioneSection showToast={showToast} attackActive={attackActive} data={dash?.esfiltrazione} onPreviewPdf={(data) => setPdfPreview({ type: 'esfil', data })} />}
-        {section === 'behavioral' && <BehavioralSection showToast={showToast} onPreviewPdf={() => setPdfPreview({ type: 'behavioral', data: {} })} onPreviewUser={(user) => setPdfPreview({ type: 'behavioralUser', data: user })} />}
+        {section === 'behavioral' && <BehavioralSection showToast={showToast} data={dash?.behavioral} onPreviewPdf={() => setPdfPreview({ type: 'behavioral', data: {} })} onPreviewUser={(user) => setPdfPreview({ type: 'behavioralUser', data: user })} />}
         {section === 'honeytoken' && <HoneytokenSection showToast={showToast} onPreviewPdf={(data) => setPdfPreview({ type: 'honeytoken', data })} onGenerateToken={() => setTokenModal(true)} />}
         {section === 'documenti' && <DocumentiSection onPreview={(doc) => setPdfPreview({ type: 'doc', data: doc })} />}
         {section === 'report' && <ReportSection showToast={showToast} onPreviewPdf={(type) => setPdfPreview({ type, data: {} })} />}
@@ -593,16 +593,16 @@ function RuleCard({ fired, name, desc, count, color, icon }: { fired: boolean; n
   )
 }
 
-function BehavioralSection({ showToast, onPreviewPdf, onPreviewUser }: { showToast: (m: string) => void; onPreviewPdf: () => void; onPreviewUser: (user: any) => void }) {
+const RULE_ICON: Record<string, JSX.Element> = { download_burst: Icon.zap, off_hours: Icon.clock, mass_access: Icon.users, recon_pattern: Icon.eye }
+
+function BehavioralSection({ showToast, data, onPreviewPdf, onPreviewUser }: { showToast: (m: string) => void; data: any; onPreviewPdf: () => void; onPreviewUser: (user: any) => void }) {
   const [showCalibra, setShowCalibra] = useState(false)
-  const userRanking = [
-    { user: 'mario.rossi', initials: 'MR', variant: 3, reparto: 'IT & Sistemi', ruolo: 'Sviluppatrice Senior', sede: 'Data Center · Milano', rule: 'download_burst', score: 12, severity: 'critical' },
-    { user: 'paolo.conti', initials: 'PC', variant: 1, reparto: 'Direzione', ruolo: 'Direttore Generale', sede: 'Sede Centrale · P4', rule: 'off_hours', score: 3, severity: 'medium' },
-    { user: 'luigi.verdi', initials: 'LV', variant: 1, reparto: 'Amministrazione', ruolo: 'Contabile Senior', sede: 'Sede Centrale · P2', rule: 'mass_access prossimo', score: 2, severity: 'info' },
-  ]
+  const rules: any[] = data?.rules || []
+  const ranking: any[] = data?.ranking || []
+  const alerts: any[] = data?.alerts || []
   return (
     <>
-      <PageHeader title="Behavioral Analytics" breadcrumb="4 regole attive · Sliding window · 0.20% falsi positivi" action={
+      <PageHeader title="Behavioral Analytics" breadcrumb={`4 regole attive · Sliding window · ${alerts.length} alert rilevati`} action={
         <div style={{display:'flex',gap:10}}>
           <button className="btn" onClick={() => setShowCalibra(s => !s)}>{Icon.settings} Configura soglie</button>
           <button className="btn" onClick={onPreviewPdf}>{Icon.eye} Anteprima report</button>
@@ -623,10 +623,9 @@ function BehavioralSection({ showToast, onPreviewPdf, onPreviewUser }: { showToa
       )}
 
       <div className="rules-grid">
-        <RuleCard fired={true} name="download_burst" desc="Stesso utente > 10 download in 5 min" count="1" color="critical" icon={Icon.zap} />
-        <RuleCard fired={true} name="off_hours" desc="Download fuori orario 08-19" count="1" color="medium" icon={Icon.clock} />
-        <RuleCard fired={false} name="mass_access" desc="Stesso reparto > 15 download / 30 min" count="0" color="info" icon={Icon.users} />
-        <RuleCard fired={false} name="recon_pattern" desc="Honey-touch entro 10 min da REAL" count="0" color="tor" icon={Icon.eye} />
+        {rules.map((r, i) => (
+          <RuleCard key={i} fired={r.fired} name={r.name} desc={r.desc} count={String(r.count)} color={r.severity} icon={RULE_ICON[r.name] || Icon.zap} />
+        ))}
       </div>
 
       <div className="content-grid-2">
@@ -636,7 +635,10 @@ function BehavioralSection({ showToast, onPreviewPdf, onPreviewUser }: { showToa
         </div>
         <div className="panel">
           <div className="panel-header"><div><div className="panel-title">Top dipendenti anomali</div><div className="panel-sub">Clicca per aprire il dossier comportamentale</div></div></div>
-          {userRanking.map((u, i) => (
+          {ranking.length === 0 && (
+            <div className="info-banner">{data ? '✅ Nessuna anomalia comportamentale rilevata.' : '⏳ Caricamento dati dal backend…'}</div>
+          )}
+          {ranking.map((u, i) => (
             <div key={i} className="rank-item rank-clickable" onClick={() => onPreviewUser(u)}>
               <MiniAvatar initials={u.initials} variant={u.variant as 1|2|3|4} />
               <div style={{flex:1}}>
@@ -651,22 +653,19 @@ function BehavioralSection({ showToast, onPreviewPdf, onPreviewUser }: { showToa
 
       <div className="panel" style={{marginTop:16}}>
         <div className="panel-header"><div className="panel-title">Alert Behavioral · Cronologia dettagliata</div></div>
-        <div className="alert-row">
-          <div className="alert-time mono">13:58:42</div>
-          <div><span className="severity-badge critical">download_burst</span></div>
-          <div className="alert-user"><MiniAvatar initials="MR" variant={3} />mario.rossi</div>
-          <div className="alert-file">12 download in 5min · evidenza: 12 file diversi del reparto IT</div>
-          <div className="alert-ip mono">10.0.0.15</div>
-          <div className="alert-action">⋯</div>
-        </div>
-        <div className="alert-row">
-          <div className="alert-time mono">22:35:18</div>
-          <div><span className="severity-badge medium">off_hours</span></div>
-          <div className="alert-user"><MiniAvatar initials="PC" />paolo.conti</div>
-          <div className="alert-file">Download fuori orario 22:35 · documento HR sensibile</div>
-          <div className="alert-ip mono">172.16.0.5</div>
-          <div className="alert-action">⋯</div>
-        </div>
+        {alerts.length === 0 && (
+          <div className="info-banner">{data ? 'Nessun alert comportamentale registrato.' : '⏳ Caricamento…'}</div>
+        )}
+        {alerts.map((a, i) => (
+          <div key={i} className="alert-row">
+            <div className="alert-time mono">{a.time}</div>
+            <div><span className={`severity-badge ${a.severity}`}>{a.rule}</span></div>
+            <div className="alert-user"><MiniAvatar initials={a.initials} variant={a.variant} />{a.user}</div>
+            <div className="alert-file">{a.evidenza}</div>
+            <div className="alert-ip mono">{a.ip}</div>
+            <div className="alert-action">⋯</div>
+          </div>
+        ))}
       </div>
     </>
   )
