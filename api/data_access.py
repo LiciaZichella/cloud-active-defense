@@ -7,6 +7,8 @@ import json
 import os
 import socket
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
 import boto3
@@ -104,18 +106,22 @@ def carica_eventi():
         bucket = CONFIG['buckets']['audit_logs']
         response = s3.list_objects_v2(Bucket=bucket)
         eventi = []
-        raw_logs = []
-        for item in response.get('Contents', []):
-            if not item['Key'].endswith('.json'):
-                continue
-            if item['Key'].startswith('beacon_mapping/'):
-                continue
+
+        def _scarica(key):
             try:
-                obj = s3.get_object(Bucket=bucket, Key=item['Key'])
-                log = json.loads(obj['Body'].read().decode('utf-8'))
+                obj = s3.get_object(Bucket=bucket, Key=key)
+                return json.loads(obj['Body'].read().decode('utf-8'))
             except Exception:
-                continue
-            raw_logs.append(log)
+                return None
+
+        # Download in parallelo: leggere gli oggetti uno a uno verso LocalStack
+        # era lentissimo (~11s). Con i thread scende a ~1-2s (boto3 e' thread-safe).
+        keys = [it['Key'] for it in response.get('Contents', [])
+                if it['Key'].endswith('.json') and not it['Key'].startswith('beacon_mapping/')]
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            raw_logs = [l for l in ex.map(_scarica, keys) if l is not None]
+
+        for log in raw_logs:
             req = log.get('requestParameters', {})
             nome_doc = req.get('documento', 'Sconosciuto')
             event_name = log.get('eventName', '')
@@ -150,16 +156,11 @@ def carica_eventi():
         mapping_beacon = {}
         try:
             mr = s3.list_objects_v2(Bucket=bucket, Prefix='beacon_mapping/')
-            for item in mr.get('Contents', []):
-                if not item['Key'].endswith('.json'):
-                    continue
-                try:
-                    obj = s3.get_object(Bucket=bucket, Key=item['Key'])
-                    m = json.loads(obj['Body'].read().decode('utf-8'))
-                    if 'beacon_id' in m and 'file_name' in m:
+            bkeys = [it['Key'] for it in mr.get('Contents', []) if it['Key'].endswith('.json')]
+            with ThreadPoolExecutor(max_workers=16) as ex:
+                for m in ex.map(_scarica, bkeys):
+                    if m and 'beacon_id' in m and 'file_name' in m:
                         mapping_beacon[m['beacon_id']] = m['file_name']
-                except Exception:
-                    pass
         except Exception:
             pass
 
@@ -359,11 +360,21 @@ def _esfiltrazione_da(eventi):
     return {'events': events, 'attackActive': len(esfil) > 0}
 
 
+_dash_cache = {'ts': 0.0, 'data': None}
+
+
 def get_dashboard():
-    """Endpoint aggregato: una sola lettura S3 alimenta tutte le sezioni gia' collegate."""
+    """Endpoint aggregato: una sola lettura S3 alimenta tutte le sezioni gia' collegate.
+    Cache breve (3s) per non rileggere S3 ad ogni richiesta ravvicinata del polling."""
+    now = time.time()
+    if _dash_cache['data'] is not None and (now - _dash_cache['ts']) < 3:
+        return _dash_cache['data']
     eventi, _ = carica_eventi()
-    return {
+    data = {
         'overview': _overview_da(eventi),
         'honeyfile': _honeyfile_da(eventi),
         'esfiltrazione': _esfiltrazione_da(eventi),
     }
+    _dash_cache['data'] = data
+    _dash_cache['ts'] = now
+    return data

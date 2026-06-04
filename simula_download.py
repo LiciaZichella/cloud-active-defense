@@ -78,8 +78,8 @@ def registra_esfiltrazione_esterna(ip_esterno, nome_file, lat, lon, ts=None):
 if __name__ == "__main__":
     print("--- AVVIO SIMULAZIONE GLOBALE (Traffico Interno + Attacco Esterno) ---")
 
-    nome_honey_1 = camouflage.genera_nome_documento('bilancio')
-    nome_honey_2 = camouflage.genera_nome_documento('risorse_umane')
+    nome_honey_1 = "Bilancio_Riservato_2026_HONEY.pdf"
+    nome_honey_2 = "Valutazione_Personale_HONEY.docx"
     nome_real    = camouflage.genera_nome_documento('progetto')
 
     registra_download(utente="mario.rossi", ip_aziendale="192.168.1.50", nome_file=nome_honey_1)

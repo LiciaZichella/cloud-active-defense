@@ -4,11 +4,15 @@ Write-Host "[1/5] Avvio LocalStack..."
 docker-compose up -d
 
 Write-Host "[2/5] Attendo che LocalStack sia pronto..."
+# Test via socket TCP (affidabile): Invoke-WebRequest su Windows passa per il
+# proxy di sistema e puo' andare in timeout anche se LocalStack risponde.
 $pronti = $false
 $tentativi = 0
-while (-not $pronti -and $tentativi -lt 30) {
+while (-not $pronti -and $tentativi -lt 60) {
     try {
-        $null = Invoke-WebRequest -Uri "http://localhost:4566/_localstack/health" -TimeoutSec 2 -ErrorAction Stop
+        $sock = New-Object System.Net.Sockets.TcpClient
+        $sock.Connect("127.0.0.1", 4566)
+        $sock.Close()
         $pronti = $true
     } catch {
         Start-Sleep -Seconds 2
@@ -16,7 +20,7 @@ while (-not $pronti -and $tentativi -lt 30) {
     }
 }
 if (-not $pronti) {
-    Write-Host "ERRORE: LocalStack non risponde dopo 60 secondi. Controlla Docker." -ForegroundColor Red
+    Write-Host "ERRORE: LocalStack non risponde dopo 120 secondi. Controlla che Docker Desktop sia avviato." -ForegroundColor Red
     exit 1
 }
 Write-Host "  LocalStack pronto." -ForegroundColor Green
