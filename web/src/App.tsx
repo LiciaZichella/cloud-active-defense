@@ -530,7 +530,7 @@ function HoneyfileSection({ showToast, data, onPreviewPdf }: { showToast: (m: st
             <div className="dossier-row"><span className="dossier-row-label">Firma documento</span><span className="dossier-row-value" style={{color: selected.signatureValid ? 'var(--ok)' : 'var(--critical)'}}>{selected.signatureValid ? '✓ VALIDA' : '✗ NON VALIDA'}</span></div>
             <div className="export-row">
               <button className="btn" onClick={() => onPreviewPdf(selected)}>{Icon.eye} Anteprima dossier</button>
-              <button className="btn" onClick={() => showToast(`📄 Dossier ${selected.user}.pdf scaricato`)}>{Icon.download} Esporta PDF</button>
+              <button className="btn" onClick={() => window.open('/api/pdf/forense?id=' + selected.id, '_blank')}>{Icon.download} Esporta PDF</button>
               <button className="btn danger" onClick={() => showToast(`🔒 Permessi IAM revocati per ${selected.user}`)}>{Icon.lock} Revoca permessi</button>
             </div>
           </div>
@@ -581,7 +581,7 @@ function EsfiltrazioneSection({ showToast, attackActive, data, onPreviewPdf }: {
           <div className="dossier-row"><span className="dossier-row-label">Webhook Discord</span><span className="dossier-row-value" style={{color:'var(--ok)'}}>✓ Inviato</span></div>
           <div className="export-row">
             <button className="btn" onClick={() => onPreviewPdf(selected)}>{Icon.eye} Anteprima report</button>
-            <button className="btn" onClick={() => showToast(`📄 Report incidente ${selected.file}.pdf scaricato`)}>{Icon.download} Stampa PDF</button>
+            <button className="btn" onClick={() => window.open('/api/pdf/esfiltrazione?id=' + selected.id, '_blank')}>{Icon.download} Stampa PDF</button>
           </div>
         </div>
         )}
@@ -624,7 +624,7 @@ function BehavioralSection({ showToast, data, onPreviewPdf, onPreviewUser }: { s
         <div style={{display:'flex',gap:10}}>
           <button className="btn" onClick={() => setShowCalibra(s => !s)}>{Icon.settings} Configura soglie</button>
           <button className="btn" onClick={onPreviewPdf}>{Icon.eye} Anteprima report</button>
-          <button className="btn primary" onClick={() => showToast('📄 Report behavioral con grafici scaricato')}>{Icon.download} Stampa PDF</button>
+          <button className="btn primary" onClick={() => window.open('/api/pdf/behavioral', '_blank')}>{Icon.download} Stampa PDF</button>
         </div>
       } />
 
@@ -850,7 +850,7 @@ function HoneytokenSection({ showToast, data, onPreviewPdf, onGenerateToken }: {
             )}
             <div className="export-row">
               <button className="btn" onClick={() => onPreviewPdf(selected)}>{Icon.eye} Anteprima dossier</button>
-              <button className="btn" onClick={() => showToast(`📄 Dossier ${selected.name}.pdf scaricato`)}>{Icon.download} Esporta PDF</button>
+              <button className="btn" onClick={() => window.open('/api/pdf/honeytoken?name=' + encodeURIComponent(selected.name), '_blank')}>{Icon.download} Esporta PDF</button>
               {selected.status === 'leaked' && <button className="btn danger" onClick={() => showToast(`🔒 Account ${selected.leakedBy} sospeso`)}>{Icon.lock} Sospendi account</button>}
             </div>
           </div>
@@ -886,7 +886,7 @@ function ReportSection({ showToast, data, onPreviewPdf }: { showToast: (m: strin
   return (
     <>
       <PageHeader title="Report & Dossier" breadcrumb="Esportazione PDF · Compliance NIS2 / GDPR" action={
-        <button className="btn primary" onClick={() => showToast('📋 Bundle completo PDF generato')}>{Icon.download} Genera PDF</button>
+        <button className="btn primary" onClick={() => window.open('/api/pdf/bundle', '_blank')}>{Icon.download} Genera PDF</button>
       } />
 
       <div className="range-tabs">
@@ -933,9 +933,9 @@ function ReportSection({ showToast, data, onPreviewPdf }: { showToast: (m: strin
         <div className="panel-header"><div className="panel-title">Esportazioni rapide</div><div className="panel-sub">4 tipi di report disponibili</div></div>
         <div className="export-row">
           <button className="btn" onClick={() => onPreviewPdf('nis2')}>{Icon.eye} Anteprima Report NIS2</button>
-          <button className="btn" onClick={() => showToast('📄 Report mensile NIS2 scaricato')}>📄 Scarica Report NIS2</button>
+          <button className="btn" onClick={() => window.open('/api/pdf/nis2', '_blank')}>📄 Scarica Report NIS2</button>
           <button className="btn" onClick={() => onPreviewPdf('bundle')}>{Icon.eye} Anteprima Bundle</button>
-          <button className="btn primary" onClick={() => showToast('📋 Bundle compliance ZIP generato')}>📋 Bundle compliance completo (ZIP)</button>
+          <button className="btn primary" onClick={() => window.open('/api/pdf/bundle', '_blank')}>📋 Bundle compliance completo (ZIP)</button>
         </div>
       </div>
     </>
