@@ -413,6 +413,87 @@ def _behavioral_da(eventi):
     return {'rules': rules, 'ranking': ranking, 'alerts': alerts}
 
 
+# Definizioni dei 4 honeytoken (coincidono con NOMI_HONEYTOKEN e i file generati).
+# Lo stato (armed/leaked) viene calcolato dai log: e' "leaked" se qualcuno ha
+# avuto accesso al file (evento Honeytoken-Leak).
+_TOKEN_DEFS = [
+    {'id': 't1', 'tone': 'aws', 'name': 'aws_credentials.txt',
+     'desc': 'Chiavi AWS AKIA + secret (esca)',
+     'exposes': ['AWS Access Key ID (AKIA...)', 'AWS Secret (40 char)', 'Region us-east-1', 'Account alias "prod-finance"']},
+    {'id': 't2', 'tone': 'env', 'name': '.env.production',
+     'desc': 'DATABASE_URL, JWT, Stripe (esca)',
+     'exposes': ['DATABASE_URL postgres', 'JWT_SECRET (64 char)', 'STRIPE_API_KEY sk_live_*', 'SENDGRID_API_KEY']},
+    {'id': 't3', 'tone': 'yaml', 'name': 'devops_secrets.yaml',
+     'desc': 'Vault token + K8s cluster token (esca)',
+     'exposes': ['Vault token (hvs.*)', 'K8s cluster_token base64', 'DB password admin', 'Host: db-prod.internal']},
+    {'id': 't4', 'tone': 'ssh', 'name': 'id_rsa_backup',
+     'desc': 'Chiave SSH privata RSA (esca)',
+     'exposes': ['RSA Private Key 2048', 'Comment: id_rsa - backup', 'Host inferito da nomenclatura']},
+]
+
+
+def _honeytoken_da(eventi):
+    """Stato dei 4 honeytoken: armed di default, leaked se ci sono accessi nei log."""
+    leaks = {}
+    for e in eventi:
+        if e['status'] == 'Honeytoken-Leak':
+            leaks.setdefault(e['file'], e)  # eventi ordinati DESC: tiene il piu' recente
+
+    tokens_out = []
+    n_leaked = 0
+    for d in _TOKEN_DEFS:
+        t = dict(d)
+        t['created'] = '01/05/2026'
+        leak = leaks.get(d['name'])
+        if leak:
+            n_leaked += 1
+            hr = ottieni_dati_hr(leak['utente'])
+            t['status'] = 'leaked'
+            t['lastCheck'] = 'adesso'
+            t['leakedBy'] = leak['utente']
+            t['leakedAt'] = _solo_ora(leak['ora'])
+            t['leakedIp'] = leak['ip']
+            t['reveals'] = (f"{leak['utente']} ({hr.get('reparto', 'n/d')}) ha avuto accesso a credenziali "
+                            f"esca di tipo {d['tone'].upper()}: possibile reconnaissance pre-esfiltrazione")
+            t['recommendation'] = 'Sospendere account, revisione CloudTrail 30gg, reset MFA obbligatorio'
+        else:
+            t['status'] = 'armed'
+            t['lastCheck'] = 'nessun accesso'
+        tokens_out.append(t)
+    return {'tokens': tokens_out, 'leaked': n_leaked}
+
+
+def _report_da(eventi):
+    """Aggregazioni per la reportistica: eventi per severity, reparti esposti, compliance."""
+    rilevanti = [e for e in eventi if e['status'] in
+                 ('Honey-Hit', 'Esfiltrazione', 'Honeytoken-Leak', 'Behavioral-Alert')]
+
+    def _cat(e):
+        if e['status'] == 'Honeytoken-Leak':
+            return 'honeytoken'
+        sev = _severity(e)
+        return sev if sev in ('critical', 'high', 'medium', 'tor') else 'medium'
+
+    tipi = {'critical': 0, 'high': 0, 'medium': 0, 'tor': 0, 'honeytoken': 0}
+    for e in rilevanti:
+        tipi[_cat(e)] = tipi.get(_cat(e), 0) + 1
+
+    rep = {}
+    for e in rilevanti:
+        u = e['utente'] or ''
+        if 'sconosciuto' in u.lower():
+            continue
+        r = ottieni_dati_hr(u).get('reparto', 'Sconosciuto')
+        rep[r] = rep.get(r, 0) + 1
+    reparti = [{'reparto': k, 'count': v} for k, v in sorted(rep.items(), key=lambda x: -x[1])][:5]
+
+    n_esfil = sum(1 for e in rilevanti if e['status'] == 'Esfiltrazione')
+    n_leak = sum(1 for e in rilevanti if e['status'] == 'Honeytoken-Leak')
+    compliance = max(60, 100 - n_esfil * 4 - n_leak * 2)
+
+    return {'eventiPerTipo': tipi, 'repartiEsposti': reparti, 'complianceScore': compliance}
+
+
 _dash_cache = {'ts': 0.0, 'data': None}
 
 
@@ -428,6 +509,8 @@ def get_dashboard():
         'honeyfile': _honeyfile_da(eventi),
         'esfiltrazione': _esfiltrazione_da(eventi),
         'behavioral': _behavioral_da(eventi),
+        'honeytoken': _honeytoken_da(eventi),
+        'report': _report_da(eventi),
     }
     _dash_cache['data'] = data
     _dash_cache['ts'] = now

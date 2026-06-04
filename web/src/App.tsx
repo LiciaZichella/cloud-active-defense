@@ -109,9 +109,9 @@ function App() {
         {section === 'honeyfile' && <HoneyfileSection showToast={showToast} data={dash?.honeyfile} onPreviewPdf={(data) => setPdfPreview({ type: 'forense', data })} />}
         {section === 'esfiltrazione' && <EsfiltrazioneSection showToast={showToast} attackActive={attackActive} data={dash?.esfiltrazione} onPreviewPdf={(data) => setPdfPreview({ type: 'esfil', data })} />}
         {section === 'behavioral' && <BehavioralSection showToast={showToast} data={dash?.behavioral} onPreviewPdf={() => setPdfPreview({ type: 'behavioral', data: {} })} onPreviewUser={(user) => setPdfPreview({ type: 'behavioralUser', data: user })} />}
-        {section === 'honeytoken' && <HoneytokenSection showToast={showToast} onPreviewPdf={(data) => setPdfPreview({ type: 'honeytoken', data })} onGenerateToken={() => setTokenModal(true)} />}
+        {section === 'honeytoken' && <HoneytokenSection showToast={showToast} data={dash?.honeytoken} onPreviewPdf={(data) => setPdfPreview({ type: 'honeytoken', data })} onGenerateToken={() => setTokenModal(true)} />}
         {section === 'documenti' && <DocumentiSection onPreview={(doc) => setPdfPreview({ type: 'doc', data: doc })} />}
-        {section === 'report' && <ReportSection showToast={showToast} onPreviewPdf={(type) => setPdfPreview({ type, data: {} })} />}
+        {section === 'report' && <ReportSection showToast={showToast} data={dash?.report} onPreviewPdf={(type) => setPdfPreview({ type, data: {} })} />}
         {section === 'sistema' && <SistemaSection showToast={showToast} />}
       </main>
       {toast && <div className="toast">{toast}</div>}
@@ -762,10 +762,12 @@ const tokens: Token[] = [
   },
 ]
 
+const TONE_ICON: Record<string, JSX.Element> = { aws: Icon.file, env: Icon.zap, yaml: Icon.layers, ssh: Icon.key }
+
 function TokenCard({ token, selected, onClick }: { token: Token; selected: boolean; onClick: () => void }) {
   return (
     <div className={`token-card ${selected ? 'selected' : ''}`} onClick={onClick}>
-      <div className={`token-icon ${token.tone}`}>{token.icon}</div>
+      <div className={`token-icon ${token.tone}`}>{token.icon || TONE_ICON[token.tone] || Icon.file}</div>
       <div style={{ flex: 1 }}>
         <div className="token-name mono">{token.name}</div>
         <div className="token-desc">{token.desc}</div>
@@ -781,18 +783,20 @@ function TokenCard({ token, selected, onClick }: { token: Token; selected: boole
   )
 }
 
-function HoneytokenSection({ showToast, onPreviewPdf, onGenerateToken }: { showToast: (m: string) => void; onPreviewPdf: (data: any) => void; onGenerateToken: () => void }) {
-  const [selectedId, setSelectedId] = useState(tokens[0].id)
-  const selected = tokens.find(t => t.id === selectedId)!
+function HoneytokenSection({ showToast, data, onPreviewPdf, onGenerateToken }: { showToast: (m: string) => void; data: any; onPreviewPdf: (data: any) => void; onGenerateToken: () => void }) {
+  const list: any[] = data?.tokens || []
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = list.find(t => t.id === selectedId) || list[0] || null
   return (
     <>
-      <PageHeader title="Honeytoken" breadcrumb="4 token attivi · 1 leak rilevato" action={<button className="btn primary" onClick={onGenerateToken}>+ Genera nuovo token</button>} />
+      <PageHeader title="Honeytoken" breadcrumb={`${list.length} token attivi · ${data?.leaked || 0} leak rilevati`} action={<button className="btn primary" onClick={onGenerateToken}>+ Genera nuovo token</button>} />
       <div className="content-grid-2">
         <div>
           <div className="token-grid" style={{ gridTemplateColumns: '1fr', gap: 12 }}>
-            {tokens.map(t => <TokenCard key={t.id} token={t} selected={selectedId === t.id} onClick={() => setSelectedId(t.id)} />)}
+            {list.map(t => <TokenCard key={t.id} token={t} selected={!!selected && selected.id === t.id} onClick={() => setSelectedId(t.id)} />)}
           </div>
         </div>
+        {selected && (
         <div className="dossier">
           <div className={`dossier-hero ${selected.status === 'leaked' ? 'leak-hero' : 'armed-hero'}`}>
             <div className="dossier-hero-label">{selected.status === 'leaked' ? '⚠ DOSSIER LEAK' : '🔒 TOKEN ARMED'}</div>
@@ -833,6 +837,7 @@ function HoneytokenSection({ showToast, onPreviewPdf, onGenerateToken }: { showT
             </div>
           </div>
         </div>
+        )}
       </div>
 
       <div className="info-banner">
@@ -851,8 +856,15 @@ function BarItem({ color, height, label, value }: { color: string; height: strin
   )
 }
 
-function ReportSection({ showToast, onPreviewPdf }: { showToast: (m: string) => void; onPreviewPdf: (type: 'nis2' | 'bundle') => void }) {
+const REP_COLORS = ['var(--critical)', 'var(--high)', 'var(--medium)', 'var(--ok)', 'var(--info)']
+
+function ReportSection({ showToast, data, onPreviewPdf }: { showToast: (m: string) => void; data: any; onPreviewPdf: (type: 'nis2' | 'bundle') => void }) {
   const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('week')
+  const tipi: any = data?.eventiPerTipo || {}
+  const reparti: any[] = data?.repartiEsposti || []
+  const compliance = data?.complianceScore ?? '—'
+  const maxTipo = Math.max(1, Number(tipi.critical || 0), Number(tipi.high || 0), Number(tipi.medium || 0), Number(tipi.tor || 0), Number(tipi.honeytoken || 0))
+  const barH = (v: any) => `${Math.round((Number(v || 0) / maxTipo) * 100)}%`
   return (
     <>
       <PageHeader title="Report & Dossier" breadcrumb="Esportazione PDF · Compliance NIS2 / GDPR" action={
@@ -870,11 +882,11 @@ function ReportSection({ showToast, onPreviewPdf }: { showToast: (m: string) => 
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Eventi per tipo</div><div className="panel-sub">{range === 'day' ? 'Oggi' : range === 'week' ? 'Ultimi 7 giorni' : range === 'month' ? 'Ultimi 30 giorni' : 'Ultimo anno'}</div></div>
           <div className="bar-chart">
-            <BarItem color="var(--critical)" height="60%" label="Critico" value="1" />
-            <BarItem color="var(--high)" height="75%" label="Alto" value="3" />
-            <BarItem color="var(--medium)" height="90%" label="Medio" value="5" />
-            <BarItem color="var(--tor)" height="45%" label="Tor/VPN" value="2" />
-            <BarItem color="var(--info)" height="30%" label="Honeytoken" value="1" />
+            <BarItem color="var(--critical)" height={barH(tipi.critical)} label="Critico" value={String(tipi.critical || 0)} />
+            <BarItem color="var(--high)" height={barH(tipi.high)} label="Alto" value={String(tipi.high || 0)} />
+            <BarItem color="var(--medium)" height={barH(tipi.medium)} label="Medio" value={String(tipi.medium || 0)} />
+            <BarItem color="var(--tor)" height={barH(tipi.tor)} label="Tor/VPN" value={String(tipi.tor || 0)} />
+            <BarItem color="var(--info)" height={barH(tipi.honeytoken)} label="Honeytoken" value={String(tipi.honeytoken || 0)} />
           </div>
         </div>
         <div className="panel">
@@ -886,15 +898,13 @@ function ReportSection({ showToast, onPreviewPdf }: { showToast: (m: string) => 
       <div className="chart-grid" style={{marginTop:16}}>
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Reparti più esposti</div></div>
-          <LegendItem color="var(--critical)" name="Amministrazione" value="4" />
-          <LegendItem color="var(--high)" name="IT & Sistemi" value="3" />
-          <LegendItem color="var(--medium)" name="HR" value="2" />
-          <LegendItem color="var(--ok)" name="Marketing" value="1" />
+          {reparti.length === 0 && <div className="info-banner">{data ? 'Nessun evento da aggregare.' : '⏳ Caricamento…'}</div>}
+          {reparti.map((r, i) => <LegendItem key={i} color={REP_COLORS[i % REP_COLORS.length]} name={r.reparto} value={String(r.count)} />)}
         </div>
         <div className="panel">
           <div className="panel-header"><div className="panel-title">Compliance score</div></div>
           <div style={{textAlign:'center',padding:'10px 0'}}>
-            <div style={{fontSize:48,fontWeight:800,color:'var(--ok)'}}>92%</div>
+            <div style={{fontSize:48,fontWeight:800,color:'var(--ok)'}}>{compliance}%</div>
             <div style={{fontSize:12,color:'var(--text-muted)',marginTop:4}}>NIS2 Art. 21 · GDPR Art. 33-34</div>
             <div style={{marginTop:14,fontSize:12,color:'var(--text-muted)'}}>Audit trail completo · Non-Ripudio attivo · Auto-Remediation operativa</div>
           </div>
